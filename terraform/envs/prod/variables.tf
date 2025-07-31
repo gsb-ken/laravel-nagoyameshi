@@ -50,6 +50,11 @@ variable "container_environment" {
   type    = list(object({ name = string, value = string }))
   default = []
 }
+variable "ecr_repository_url" {
+  description = "ECR repository URL for the Laravel image"
+  type        = string
+}
+
 
 # RDS関連 --------------------------------------------------
 variable "db_name" {

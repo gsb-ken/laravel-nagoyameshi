@@ -55,10 +55,32 @@ module "ecs" {
   subnet_ids         = module.vpc.private_subnet_ids
   security_group_ids = [aws_security_group.ecs_sg.id]
 
-  alb_target_group_arn  = module.alb.target_group_arn
+  alb_target_group_arn   = module.alb.target_group_arn
+  laravel_image          = var.laravel_image
+  container_name         = var.container_name
+  container_environment  = var.container_environment
+  ecs_execution_role_arn = module.iam.ecs_execution_role_arn
+  ecs_task_role_arn      = module.iam.ecs_task_role_arn
+}
+
+#------------------------------
+# ECS Module 呼び出し
+#------------------------------
+module "ecs_migrate_task" {
+  source      = "../../modules/ecs/task_definition_migrate"
+  project     = var.project
+  environment = var.environment
+  aws_region  = var.aws_region
+
+  cpu                    = var.ecs_cpu
+  memory                 = var.ecs_memory
+  ecs_execution_role_arn = module.iam.ecs_execution_role_arn
+
   laravel_image         = var.laravel_image
   container_name        = var.container_name
-  container_environment = var.container_environment
+  container_environment = []
+  log_group_name      = "/ecs/${var.project}-${var.environment}"
+  log_stream_prefix   = "ecs-migrate"
 }
 
 # -----------------------------
@@ -173,8 +195,13 @@ resource "aws_security_group" "rds_sg" {
 
 
 # ----------------------------
-# IAM Role
+# IAM Role Moduke 呼び出し
 # ----------------------------
+module "iam" {
+  source      = "../../modules/iam"
+  project     = "nagoyameshi"
+  environment = "prod"
+}
 
 
 # resource "aws_iam_role" "iam_role_codebuild" {

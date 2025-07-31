@@ -59,3 +59,5 @@ SSM Parameter Store による環境変数管理（.env は本番環境では不�
 ブランチ名は terraform.tfvars で指定した github_branch に合わせてください
 
 push → CodePipeline → デプロイ の自動化を前提としています
+
+# test deploy

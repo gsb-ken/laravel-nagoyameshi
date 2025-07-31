@@ -11,59 +11,6 @@ resource "aws_ecs_cluster" "ecs_cluster" {
   }
 }
 
-# ----------------------------
-# IAM Role
-# ----------------------------
-resource "aws_iam_role" "execution_role" {
-  name = "${var.project}-${var.environment}-iam-role-ecs-exec"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-resource "aws_iam_role_policy_attachment" "ecs_exec_attach" {
-  role       = aws_iam_role.execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-resource "aws_iam_role" "task_role" {
-  name = "${var.project}-${var.environment}-iam-role-ecs-task"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-resource "aws_iam_role_policy" "ecs_task_policy" {
-  name = "${var.project}-${var.environment}-ecs-task-policy"
-  role = aws_iam_role.task_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = [
-          "s3:GetObject"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
-
 # ------------------------------
 # Task Definition
 # ------------------------------
@@ -74,8 +21,8 @@ resource "aws_ecs_task_definition" "ecs-task" {
   cpu                      = var.cpu
   memory                   = var.memory
 
-  execution_role_arn = aws_iam_role.execution_role.arn
-  task_role_arn      = aws_iam_role.task_role.arn
+  execution_role_arn = var.ecs_execution_role_arn
+  task_role_arn      = var.ecs_task_role_arn
 
   container_definitions = jsonencode([
     {
@@ -93,7 +40,7 @@ resource "aws_ecs_task_definition" "ecs-task" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = "/ecs/${var.project}-${var.environment}"
+          awslogs-group         = "/ecs/${var.project}-${var.environment}/task"
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "ecs"
         }
