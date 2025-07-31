@@ -19,10 +19,10 @@ COPY --from=public.ecr.aws/docker/library/composer:latest /usr/bin/composer /usr
 WORKDIR /var/www/html
 
 # Laravelのソースをコンテナにコピー
-COPY ./laravel-nagoyameshi /var/www/html/laravel-nagoyameshi
+COPY . /var/www/html
 
 # Laravel初期設定
-WORKDIR /var/www/html/laravel-nagoyameshi
+WORKDIR /var/www/html
 
 RUN composer install --no-dev --optimize-autoloader \
  && php artisan config:clear \
