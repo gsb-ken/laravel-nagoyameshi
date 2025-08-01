@@ -25,6 +25,7 @@ phases:
 
       - echo "[POST_BUILD] Writing imagedefinitions.json for ECS Deploy..."
       - printf '[{"name":"%s","imageUri":"%s:latest"}]' "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
+      - cat imagedefinitions.json
 artifacts:
   files:
     - imagedefinitions.json

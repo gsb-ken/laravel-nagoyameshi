@@ -25,17 +25,3 @@ resource "aws_ecs_task_definition" "migrate" {
     }
   ])
 }
-
-# ----------------------------
-# Log Group
-# ----------------------------
-resource "aws_cloudwatch_log_group" "migrate_log_group" {
-  name              = "/ecs/migrate/${var.project}-${var.environment}"
-  retention_in_days = 7  # 任意、7日間ログ保持
-
-  tags = {
-    Name    = "${var.project}-${var.environment}-ecs-migrate-log-group"
-    Project = var.project
-    Env     = var.environment
-  }
-}
