@@ -26,7 +26,7 @@ resource "aws_lb_target_group" "tg" {
   target_type = "ip" # ECS Fargate
 
   health_check {
-    path                = "/"
+    path                = "/health"
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30

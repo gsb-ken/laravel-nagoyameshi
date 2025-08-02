@@ -64,7 +64,7 @@ module "ecs" {
 }
 
 #------------------------------
-# ECS Module 呼び出し
+# ECS Migrate Module 呼び出し
 #------------------------------
 module "ecs_migrate_task" {
   source      = "../../modules/ecs/task_definition_migrate"
@@ -86,10 +86,15 @@ module "ecs_migrate_task" {
 # -----------------------------
 # RDS Password 生成
 # -----------------------------
-resource "random_password" "rds_password" {
-  length  = 16
-  special = true
-}
+# resource "random_password" "db_password" {
+#   length  = 16
+#   special = true
+# }
+# output "generated_db_password" {
+#   value     = random_password.db_password.result
+#   sensitive = true
+# }
+
 
 # -----------------------------
 # RDS Module 呼び出し
@@ -103,9 +108,9 @@ module "rds" {
   subnet_ids         = module.vpc.isolated_subnet_ids
   security_group_ids = [aws_security_group.rds_sg.id]
 
-  db_name  = var.db_name
-  username = var.db_username
-  password = random_password.rds_password.result
+  db_name     = var.db_name
+  db_username = var.db_username
+  db_password = var.db_password
 
   instance_class = var.db_instance_class
   multi_az       = true
@@ -195,14 +200,109 @@ resource "aws_security_group" "rds_sg" {
 
 
 # ----------------------------
-# IAM Role Moduke 呼び出し
+# IAM Role Module 呼び出し
 # ----------------------------
 module "iam" {
-  source      = "../../modules/iam"
-  project     = "nagoyameshi"
-  environment = "prod"
+  source                    = "../../modules/iam"
+  project                   = "nagoyameshi"
+  environment               = "prod"
+  aws_account_id            = data.aws_caller_identity.current.account_id
+  aws_region                = var.aws_region
+  artifact_bucket           = module.s3.artifact_bucket
+  codestar_connection_arn   = var.codestar_connection_arn
+  codebuild_project_name    = module.codebuild.name
+  migration_task_definition = module.ecs_migrate_task.task_definition_arn
 }
 
+# ----------------------------
+# SSM Module 呼び出し
+# ----------------------------
+module "ssm_parameters" {
+  source      = "../../shared/ssm"
+  project     = var.project
+  environment = var.environment
+  db_password = var.db_password
+  db_username = var.db_username
+  env_parameters = merge(
+    var.env_parameters,
+    {
+      APP_URL = "http://${module.alb.alb_dns_name}"
+      DB_HOST = module.rds.rds_endpoint
+    }
+  )
+}
+
+# ----------------------------
+# Codepipeline Module 呼び出し
+# ----------------------------
+module "codepipeline" {
+  source = "../../modules/codepipeline"
+
+  project                 = var.project
+  environment             = var.environment
+  github_owner            = var.github_owner
+  github_repo             = var.github_repo
+  github_branch           = var.github_branch
+  github_oauth_token      = var.github_oauth_token
+  codebuild_project_name  = module.codebuild.name
+  codepipeline_role_arn   = module.iam.codepipeline_role_arn
+  artifact_bucket         = module.s3.artifact_bucket
+  ecs_cluster_name        = module.ecs.ecs_cluster_name
+  ecs_service_name        = module.ecs.ecs_service_name
+  codestar_connection_arn = var.codestar_connection_arn
+}
+
+
+# ----------------------------
+# Codebuild Module 呼び出し
+# ----------------------------
+module "codebuild" {
+  source = "../../modules/codebuild"
+
+  project     = var.project
+  environment = var.environment
+
+  aws_region     = var.aws_region
+  aws_account_id = data.aws_caller_identity.current.account_id
+
+  github_owner   = var.github_owner
+  github_repo    = var.github_repo
+  github_branch  = var.github_branch
+  buildspec_file = "buildspec.yml"
+
+  ecr_repo_name             = module.ecr.repository_name
+  ecr_repo_url              = module.ecr.repository_url
+  container_name            = var.container_name
+  ecs_cluster_name          = module.ecs.ecs_cluster_name
+  migration_task_definition = module.ecs_migrate_task.ecs_task_definition_arn
+  subnet_id_1               = module.vpc.public_subnet_ids[0]
+  subnet_id_2               = module.vpc.public_subnet_ids[1]
+  security_group_id         = aws_security_group.ecs_sg.id
+  codebuild_role_arn        = module.iam.codebuild_role_arn
+}
+
+# ----------------------------
+# S3 Module 呼び出し
+# ----------------------------
+module "s3" {
+  source      = "../../modules/s3"
+  project     = var.project
+  environment = var.environment
+}
+
+
+# ----------------------------
+# ECR Module 呼び出し
+# ----------------------------
+module "ecr" {
+  source      = "../../modules/ecr"
+  project     = var.project
+  environment = var.environment
+}
+
+
+# AWS アカウント ID を取得
+data "aws_caller_identity" "current" {}
 
 # resource "aws_iam_role" "iam_role_codebuild" {
 #   name = "${var.project}-${var.environment}-iam-role-codebuild"

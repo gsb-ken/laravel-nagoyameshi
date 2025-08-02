@@ -47,8 +47,8 @@ resource "aws_db_instance" "rds" {
 
   identifier = "${var.project}-${var.environment}-rds"
 
-  username = var.username
-  password = var.password
+  username = var.db_username
+  password = var.db_password
 
   instance_class = var.instance_class
   allocated_storage     = var.allocated_storage
@@ -61,7 +61,7 @@ resource "aws_db_instance" "rds" {
   publicly_accessible    = false
   port                   = 3306
 
-  name                 = var.db_name#"laravel_nagoyameshi"
+  name                 = var.db_name  #"laravel_nagoyameshi"
   parameter_group_name = aws_db_parameter_group.rds_parametergroup.name
   option_group_name    = aws_db_option_group.rds_optiongroup.name
 

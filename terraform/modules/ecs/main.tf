@@ -25,29 +25,63 @@ resource "aws_ecs_task_definition" "ecs-task" {
   task_role_arn      = var.ecs_task_role_arn
 
   container_definitions = jsonencode([
-    {
-      name      = var.container_name
-      image     = var.laravel_image
-      portMappings = [
-        {
-          containerPort = 80
-          hostPort      = 80
-          protocol      = "tcp"
-        }
-      ],
-      essential = true
-      environment = var.container_environment
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/${var.project}-${var.environment}/task"
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
-        }
+  {
+    name      = var.container_name
+    image     = var.laravel_image
+    portMappings = [
+      {
+        containerPort = 80
+        hostPort      = 80
+        protocol      = "tcp"
       }
-     }
-  ])
+    ],
+    essential = true
+    environment = [
+      for key, value in var.container_environment :
+      {
+        name  = key
+        value = value
+      }
+      if !contains([
+        "APP_ENV",
+        "APP_DEBUG",
+        "APP_URL",
+        "DB_CONNECTION",
+        "DB_HOST",
+        "DB_PORT",
+        "DB_DATABASE",
+        "DB_USERNAME",
+        "DB_PASSWORD"
+      ], key)
+    ],
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = "/ecs/${var.project}-${var.environment}/task"
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "ecs"
+      }
+    },
+    secrets = [
+      for key in [
+        "APP_ENV",
+        "APP_DEBUG",
+        "APP_URL",
+        "DB_CONNECTION",
+        "DB_HOST",
+        "DB_PORT",
+        "DB_DATABASE",
+        "DB_USERNAME",
+        "DB_PASSWORD"
+      ] : {
+        name      = key
+        valueFrom = "/${var.project}/${var.environment}/${key}"
+      }
+    ]
+  }
+])
 }
+
 
 # ----------------------------
 # ECS Service
@@ -73,19 +107,6 @@ resource "aws_ecs_service" "ecs_service" {
 
   tags = {
     Name    = "${var.project}-${var.environment}-ecs-service"
-    Project = var.project
-    Env     = var.environment
-  }
-}
-# ----------------------------
-# Log Group
-# ----------------------------
-resource "aws_cloudwatch_log_group" "ecs_log_group" {
-  name              = "/ecs/${var.project}-${var.environment}"
-  retention_in_days = 7  # 任意、7日間ログ保持
-
-  tags = {
-    Name    = "${var.project}-${var.environment}-ecs-log-group"
     Project = var.project
     Env     = var.environment
   }

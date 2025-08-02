@@ -69,4 +69,38 @@ variable "db_instance_class" {
   type    = string
   default = "db.t3.micro"
 }
-# db_passwordはrandom_passwordで生成している
+variable "db_password" {
+  type    = string
+  default = null
+}
+
+variable "env_parameters" {
+  description = "SSM に登録する環境変数のマップ"
+  type        = map(string)
+}
+
+variable "github_owner" {
+  description = "GitHub username or organization name"
+  type        = string
+}
+
+variable "github_repo" {
+  description = "GitHub repository name"
+  type        = string
+}
+
+variable "github_branch" {
+  description = "Branch to track (e.g. main)"
+  type        = string
+  default     = "main"
+}
+
+variable "github_oauth_token" {
+  description = "GitHub Personal Access Token for CodePipeline"
+  type        = string
+  sensitive   = true
+}
+variable "codestar_connection_arn" {
+  type        = string
+  description = "CodeStar Connections ARN for GitHub"
+}

@@ -14,8 +14,27 @@ phases:
 
   post_build:
     commands:
+      - echo "[POST_BUILD] Pushing image to ECR..."
+      - docker push ${REPOSITORY_URI}:latest
+
+
+      - echo "MIGRATION_TASK_DEFINITION=${MIGRATION_TASK_DEFINITION}"
+      - echo "ECS_CLUSTER_NAME=${ECS_CLUSTER_NAME}"
+      - echo "SUBNET_ID_1=${SUBNET_ID_1}"
+      - echo "SUBNET_ID_2=${SUBNET_ID_2}"
+      - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
+
+      - aws ecs run-task ...
       - echo "[POST_BUILD] Running Laravel migration via ECS RunTask..."
       - |
+        TASK_DEF_ARN=$(aws ecs list-task-definitions \
+          --family-prefix nagoyameshi-prod-migrate \
+          --sort DESC \
+          --max-items 1 \
+          --region ap-northeast-1 \
+          --query 'taskDefinitionArns[0]' \
+          --output text)
+      - echo "[PostBuild] Running Laravel migration with $TASK_DEF_ARN"
         aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
