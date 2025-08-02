@@ -23,20 +23,12 @@ phases:
       - echo "SUBNET_ID_2=${SUBNET_ID_2}"
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
-      - echo "[POST_BUILD] Running Laravel migration via ECS RunTask..."
       - |
-        TASK_DEF_ARN=$(aws ecs list-task-definitions \
-          --family-prefix nagoyameshi-prod-migrate \
-          --sort DESC \
-          --max-items 1 \
-          --region ap-northeast-1 \
-          --query 'taskDefinitionArns[0]' \
-          --output text)
-      - echo "[PostBuild] Running Laravel migration with $TASK_DEF_ARN"
+        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}
         aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
-          --task-definition $TASK_DEF_ARN \
+          --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1
 
