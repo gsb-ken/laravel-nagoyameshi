@@ -24,7 +24,7 @@ phases:
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
       - |
-        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}
+        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
         aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
