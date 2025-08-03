@@ -18,7 +18,7 @@ resource "aws_ecs_task_definition" "migrate" {
         logDriver = "awslogs"
         options = {
         awslogs-region        = var.aws_region
-        awslogs-group         = var.log_group_name
+        awslogs-group         = "/ecs/${var.project}-${var.environment}"
         awslogs-stream-prefix = var.log_stream_prefix
         }
       }
