@@ -47,3 +47,7 @@ variable "ecs_execution_role_arn" {
 variable "ecs_task_role_arn" {
   type        = string
 }
+variable "env_secret_keys" {
+  type        = list(string)
+  description = "List of keys to load from SSM as secrets"
+}

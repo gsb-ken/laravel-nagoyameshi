@@ -1,15 +1,19 @@
 FROM public.ecr.aws/docker/library/php:8.2-apache
 
-# 必要なPHP拡張モジュール
+# 必要なPHP拡張・SSM Agentの依存をインストール
 RUN apt-get update && apt-get install -y \
     unzip \
     git \
     libzip-dev \
     libpng-dev \
     default-mysql-client \
+    curl \
+    wget \
+    gnupg \
+    supervisor \
     && docker-php-ext-install pdo pdo_mysql zip bcmath
 
-# Apacheのmod_rewrite有効化
+# Apache mod_rewrite 有効化
 RUN a2enmod rewrite
 
 # Composerのインストール
@@ -18,12 +22,10 @@ COPY --from=public.ecr.aws/docker/library/composer:latest /usr/bin/composer /usr
 # 作業ディレクトリ
 WORKDIR /var/www/html
 
-# Laravelのソースをコンテナにコピー
+# Laravelのソースをコピー
 COPY . /var/www/html
 
 # Laravel初期設定
-WORKDIR /var/www/html
-
 RUN composer install --no-dev --optimize-autoloader \
  && php artisan config:clear \
  && php artisan cache:clear \
@@ -32,14 +34,71 @@ RUN composer install --no-dev --optimize-autoloader \
 # Apache用にDocumentRootをpublicに変更
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Laravelログファイルをstdoutに流す
+# Laravelログを標準出力に流す
 RUN ln -sf /dev/stdout /var/www/html/storage/logs/laravel.log
 
-# パーミッション修正（正しいパスに変更）
+# パーミッション修正
 RUN chown -R www-data:www-data storage bootstrap/cache
+
+# 🔽 SSM Agent をインストール
+RUN mkdir -p /tmp/ssm \
+ && cd /tmp/ssm \
+ && curl -Lo amazon-ssm-agent.deb "https://s3.amazonaws.com/amazon-ssm-${AWS_REGION:-ap-northeast-1}/latest/debian_amd64/amazon-ssm-agent.deb" \
+ && dpkg -i amazon-ssm-agent.deb \
+ && rm -rf /tmp/ssm
+
+# 🔽 Supervisor 設定を追加
+COPY ./supervisord.conf /etc/supervisord.conf
 
 # ポート公開
 EXPOSE 80
 
-# 起動
-CMD ["apache2-foreground"]
+# 起動コマンド: Apache + SSM Agent をSupervisorで起動
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
+
+
+# FROM public.ecr.aws/docker/library/php:8.2-apache
+
+# # 必要なPHP拡張モジュール
+# RUN apt-get update && apt-get install -y \
+#     unzip \
+#     git \
+#     libzip-dev \
+#     libpng-dev \
+#     default-mysql-client \
+#     && docker-php-ext-install pdo pdo_mysql zip bcmath
+
+# # Apacheのmod_rewrite有効化
+# RUN a2enmod rewrite
+
+# # Composerのインストール
+# COPY --from=public.ecr.aws/docker/library/composer:latest /usr/bin/composer /usr/bin/composer
+
+# # 作業ディレクトリ
+# WORKDIR /var/www/html
+
+# # Laravelのソースをコンテナにコピー
+# COPY . /var/www/html
+
+# # Laravel初期設定
+# WORKDIR /var/www/html
+
+# RUN composer install --no-dev --optimize-autoloader \
+#  && php artisan config:clear \
+#  && php artisan cache:clear \
+#  && php artisan view:clear
+
+# # Apache用にDocumentRootをpublicに変更
+# RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
+
+# # Laravelログファイルをstdoutに流す
+# RUN ln -sf /dev/stdout /var/www/html/storage/logs/laravel.log
+
+# # パーミッション修正（正しいパスに変更）
+# RUN chown -R www-data:www-data storage bootstrap/cache
+
+# # ポート公開
+# EXPOSE 80
+
+# # 起動
+# CMD ["apache2-foreground"]

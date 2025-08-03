@@ -1,16 +1,14 @@
-resource "aws_ssm_parameter" "laravel_env" {
-  for_each = merge(
-    var.env_parameters,
-    {
-      DB_PASSWORD = var.db_password
-      DB_USERNAME = var.db_username
-    }
-  )
-
+resource "aws_ssm_parameter" "env_parameters" {
+  for_each = var.env_parameters
+  
   name        = "/${var.project}/${var.environment}/${each.key}"
-  type        = each.key == "DB_PASSWORD" ? "SecureString" : "String"
+  type  = contains(var.env_secret_keys, each.key) ? "SecureString" : "String"
   value       = each.value
-  overwrite   = true
-  description = "Parameter for ${var.project} ${var.environment} (${each.key})"
+
+  tags = {
+    Project = var.project
+    Environment = var.environment
+    Name = each.key
+  }
 }
 

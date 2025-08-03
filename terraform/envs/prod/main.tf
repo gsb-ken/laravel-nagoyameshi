@@ -42,25 +42,27 @@ module "alb" {
 # ECS Module 呼び出し
 #------------------------------
 module "ecs" {
-  source = "../../modules/ecs"
-
-  project     = var.project
-  environment = var.environment
-  aws_region  = var.aws_region
-
-  cpu           = var.ecs_cpu
-  memory        = var.ecs_memory
-  desired_count = var.ecs_desired_count
-
-  subnet_ids         = module.vpc.private_subnet_ids
-  security_group_ids = [aws_security_group.ecs_sg.id]
-
+  source                 = "../../modules/ecs"
+  project                = var.project
+  environment            = var.environment
+  aws_region             = var.aws_region
+  cpu                    = var.ecs_cpu
+  memory                 = var.ecs_memory
+  desired_count          = var.ecs_desired_count
+  subnet_ids             = module.vpc.private_subnet_ids
+  security_group_ids     = [aws_security_group.ecs_sg.id]
   alb_target_group_arn   = module.alb.target_group_arn
   laravel_image          = var.laravel_image
   container_name         = var.container_name
-  container_environment  = var.container_environment
   ecs_execution_role_arn = module.iam.ecs_execution_role_arn
   ecs_task_role_arn      = module.iam.ecs_task_role_arn
+  # secrets にしたい変数名一覧
+  env_secret_keys = var.env_secret_keys
+  # 明示的に平文で渡したいもの（SSM管理しないもの）
+  container_environment = [
+    { name = "FILESYSTEM_DISK", value = "local" },
+    { name = "SESSION_DRIVER", value = "file" }
+  ]
 }
 
 #------------------------------
@@ -221,13 +223,69 @@ module "ssm_parameters" {
   source      = "../../shared/ssm"
   project     = var.project
   environment = var.environment
-  db_password = var.db_password
-  db_username = var.db_username
+
   env_parameters = merge(
     var.env_parameters,
     {
-      APP_URL = "http://${module.alb.alb_dns_name}"
-      DB_HOST = module.rds.rds_endpoint
+      APP_NAME  = "Laravel"
+      APP_ENV   = "production"
+      APP_DEBUG = "true"
+      APP_URL   = "http://${module.alb.alb_dns_name}"
+      APP_KEY   = "base64:BHUgpqmN22cyp6fF98YCaAgM8Q+uwsm0pOGNGQEU3ok="
+
+      DB_CONNECTION = "mysql"
+      DB_HOST       = module.rds.rds_endpoint
+      DB_PORT       = "3306"
+      DB_DATABASE   = "laravel_nagoyameshi"
+      DB_USERNAME   = var.db_username
+      DB_PASSWORD   = var.db_password
+
+      LOG_CHANNEL              = "stack"
+      LOG_DEPRECATIONS_CHANNEL = "null"
+      LOG_LEVEL                = "debug"
+
+      BROADCAST_DRIVER = "log"
+      CACHE_DRIVER     = "file"
+      FILESYSTEM_DISK  = "local"
+      QUEUE_CONNECTION = "sync"
+      SESSION_DRIVER   = "file"
+      SESSION_LIFETIME = "120"
+
+      MEMCACHED_HOST = "127.0.0.1"
+
+      # REDIS_HOST     = "127.0.0.1"
+      # REDIS_PASSWORD = "null"
+      # REDIS_PORT     = "6379"
+
+      # MAIL_MAILER       = "smtp"
+      # MAIL_HOST         = "mail.example.com"
+      # MAIL_PORT         = "587"
+      # MAIL_USERNAME     = "your@example.com"
+      # MAIL_PASSWORD     = "your-secure-password"
+      # MAIL_ENCRYPTION   = "tls"
+      # MAIL_FROM_ADDRESS = "hello@example.com"
+      # MAIL_FROM_NAME    = "NagoyaMeshi"
+
+      # AWS_ACCESS_KEY_ID           = ""
+      # AWS_SECRET_ACCESS_KEY       = ""
+      # AWS_DEFAULT_REGION          = "ap-northeast-1"
+      # AWS_BUCKET                  = ""
+      # AWS_USE_PATH_STYLE_ENDPOINT = "false"
+
+      # PUSHER_APP_ID      = ""
+      # PUSHER_APP_KEY     = ""
+      # PUSHER_APP_SECRET  = ""
+      # PUSHER_HOST        = ""
+      # PUSHER_PORT        = "443"
+      # PUSHER_SCHEME      = "https"
+      # PUSHER_APP_CLUSTER = "mt1"
+
+      # VITE_APP_NAME           = "Laravel"
+      # VITE_PUSHER_APP_KEY     = ""
+      # VITE_PUSHER_HOST        = ""
+      # VITE_PUSHER_PORT        = "443"
+      # VITE_PUSHER_SCHEME      = "https"
+      # VITE_PUSHER_APP_CLUSTER = "mt1"
     }
   )
 }

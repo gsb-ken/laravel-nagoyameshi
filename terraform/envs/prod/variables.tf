@@ -70,8 +70,8 @@ variable "db_instance_class" {
   default = "db.t3.micro"
 }
 variable "db_password" {
-  type    = string
-  default = null
+  type      = string
+  sensitive = true
 }
 
 variable "env_parameters" {
@@ -103,4 +103,8 @@ variable "github_oauth_token" {
 variable "codestar_connection_arn" {
   type        = string
   description = "CodeStar Connections ARN for GitHub"
+}
+variable "env_secret_keys" {
+  type        = list(string)
+  description = "ECSタスク定義でsecretsとしてSSMから注入するキー一覧"
 }

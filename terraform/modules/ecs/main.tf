@@ -36,24 +36,6 @@ resource "aws_ecs_task_definition" "ecs-task" {
       }
     ],
     essential = true
-    environment = [
-      for key, value in var.container_environment :
-      {
-        name  = key
-        value = value
-      }
-      if !contains([
-        "APP_ENV",
-        "APP_DEBUG",
-        "APP_URL",
-        "DB_CONNECTION",
-        "DB_HOST",
-        "DB_PORT",
-        "DB_DATABASE",
-        "DB_USERNAME",
-        "DB_PASSWORD"
-      ], key)
-    ],
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -62,21 +44,20 @@ resource "aws_ecs_task_definition" "ecs-task" {
         awslogs-stream-prefix = "ecs"
       }
     },
+
     secrets = [
-      for key in [
-        "APP_ENV",
-        "APP_DEBUG",
-        "APP_URL",
-        "DB_CONNECTION",
-        "DB_HOST",
-        "DB_PORT",
-        "DB_DATABASE",
-        "DB_USERNAME",
-        "DB_PASSWORD"
-      ] : {
-        name      = key
+      for key in var.env_secret_keys : {
+        name  = key
         valueFrom = "/${var.project}/${var.environment}/${key}"
       }
+    ],
+
+    environment = [
+      for env in var.container_environment  : {
+        name = env.name
+        value = env.value
+      }
+      if !contains(var.env_secret_keys,env.name)
     ]
   }
 ])
@@ -92,6 +73,8 @@ resource "aws_ecs_service" "ecs_service" {
   task_definition = aws_ecs_task_definition.ecs-task.arn
   launch_type     = "FARGATE"
   desired_count   = var.desired_count
+
+  enable_execute_command = true
 
   network_configuration {
     subnets         = var.subnet_ids
