@@ -240,7 +240,7 @@ module "ssm_parameters" {
       DB_USERNAME   = var.db_username
       DB_PASSWORD   = var.db_password
 
-      LOG_CHANNEL              = "stack"
+      LOG_CHANNEL              = "stderr"
       LOG_DEPRECATIONS_CHANNEL = "null"
       LOG_LEVEL                = "debug"
 
@@ -287,6 +287,20 @@ module "ssm_parameters" {
       # VITE_PUSHER_SCHEME      = "https"
       # VITE_PUSHER_APP_CLUSTER = "mt1"
     }
+  )
+  env_secret_keys = concat(
+    var.env_secret_keys,
+    [
+      "APP_NAME",
+      "APP_ENV",
+      "APP_KEY",
+      "APP_DEBUG",
+      "APP_URL",
+
+      "DB_HOST",
+      "DB_USERNAME",
+      "DB_PASSWORD"
+    ]
   )
 }
 
