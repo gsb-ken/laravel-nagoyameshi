@@ -43,7 +43,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 # 🔽 SSM Agent をインストール
 RUN mkdir -p /tmp/ssm \
  && cd /tmp/ssm \
- && curl -Lo amazon-ssm-agent.deb "https://s3.amazonaws.com/amazon-ssm-${AWS_REGION:-ap-northeast-1}/latest/debian_amd64/amazon-ssm-agent.deb" \
+ && curl -Lo amazon-ssm-agent.deb "https://s3.ap-northeast-1.amazonaws.com/amazon-ssm-ap-northeast-1/latest/debian_amd64/amazon-ssm-agent.deb" \
  && dpkg -i amazon-ssm-agent.deb \
  && rm -rf /tmp/ssm
 
