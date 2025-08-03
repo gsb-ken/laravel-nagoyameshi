@@ -34,8 +34,10 @@ RUN composer install --no-dev --optimize-autoloader \
 # Apache用にDocumentRootをpublicに変更
 RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-# Laravelログを標準出力に流す
-RUN ln -sf /dev/stdout /var/www/html/storage/logs/laravel.log
+# Laravelログファイルとディレクトリ作成
+RUN mkdir -p /var/www/html/storage/logs \
+&& touch /var/www/html/storage/logs/laravel.log \
+&& ln -sf /dev/stdout /var/www/html/storage/logs/laravel.log
 
 # パーミッション修正
 RUN chown -R www-data:www-data storage bootstrap/cache
