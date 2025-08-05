@@ -118,7 +118,7 @@ resource "aws_iam_role_policy" "codebuild_ecs_run_task" {
           "ecs:ListTasks",
           "ecs:DescribeClusters"
         ],
-        Resource =[ "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task-definition/${var.project}-${var.environment}-migrate:*"
+        Resource =[ "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task-definition/${var.project}-${var.environment}-task-migrate:*"
         ]
       },
       {
