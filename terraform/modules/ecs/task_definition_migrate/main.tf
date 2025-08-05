@@ -13,7 +13,19 @@ resource "aws_ecs_task_definition" "migrate" {
       image     = var.laravel_image
       essential = true
       command   = ["sh", "-c", "php artisan migrate --force"]
-      environment = var.container_environment
+      secrets = [
+      for key in var.env_secret_keys : {
+        name  = key
+        valueFrom = "/${var.project}/${var.environment}/${key}"
+      }
+    ],
+    environment = [
+      for env in var.container_environment  : {
+        name = env.name
+        value = env.value
+      }
+      if !contains(var.env_secret_keys,env.name)
+    ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -24,4 +36,8 @@ resource "aws_ecs_task_definition" "migrate" {
       }
     }
   ])
+}
+resource "aws_cloudwatch_log_group" "migrate" {
+  name              = "/ecs/${var.project}-${var.environment}/task/migrate"
+  retention_in_days = 7
 }

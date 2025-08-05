@@ -14,6 +14,7 @@ variable "container_environment" {
 variable "ecs_execution_role_arn" {
   type        = string
 }
+
 variable "log_group_name" {
   type        = string
   description = "CloudWatch Logs group name"
@@ -22,4 +23,8 @@ variable "log_group_name" {
 variable "log_stream_prefix" {
   type        = string
   description = "CloudWatch Logs stream prefix"
+}
+variable "env_secret_keys" {
+  type        = list(string)
+  description = "List of keys to load from SSM as secrets"
 }

@@ -25,17 +25,23 @@ resource "aws_iam_role_policy" "ecs_exec_ssm" {
     Statement = [
       {
         Effect   = "Allow",
-        Action   = ["ssm:GetParameters", "ssm:GetParameter", "ssm:GetParametersByPath","logs:CreateLogStream","logs:PutLogEvents","ssmmessages:CreateControlChannel",
+        Action   = ["ssm:GetParameters", 
+        "ssm:GetParameter", 
+        "ssm:GetParametersByPath",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "ssmmessages:CreateControlChannel",
           "ssmmessages:CreateDataChannel",
           "ssmmessages:OpenControlChannel",
-          "ssmmessages:OpenDataChannel"],
+          "ssmmessages:OpenDataChannel",],
         Resource = ["arn:aws:ssm:ap-northeast-1:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/${var.environment}/*"]
       },
       {
         Effect = "Allow",
         Action = [
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
+          "logs:PutLogEvents",
+          "kms:Decrypt"
         ],
         Resource = "*"
       }

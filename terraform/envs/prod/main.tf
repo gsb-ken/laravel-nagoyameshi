@@ -81,6 +81,7 @@ module "ecs_migrate_task" {
   laravel_image         = var.laravel_image
   container_name        = var.container_name
   container_environment = []
+  env_secret_keys       = var.env_secret_keys
   log_group_name        = "/ecs/${var.project}-${var.environment}"
   log_stream_prefix     = "ecs-migrate"
 }
