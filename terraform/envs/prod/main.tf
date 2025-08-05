@@ -82,7 +82,7 @@ module "ecs_migrate_task" {
   container_name        = var.container_name
   container_environment = []
   env_secret_keys       = var.env_secret_keys
-  log_group_name        = "/ecs/${var.project}-${var.environment}"
+  log_group_name        = "/ecs/${var.project}-${var.environment}/task/migrate"
   log_stream_prefix     = "ecs-migrate"
 }
 
