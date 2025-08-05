@@ -11,66 +11,13 @@ resource "aws_ecs_cluster" "ecs_cluster" {
   }
 }
 
-# ------------------------------
-# Task Definition
-# ------------------------------
-resource "aws_ecs_task_definition" "ecs-task" {
-  family                   = "${var.project}-${var.environment}-ecs-task"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = var.cpu
-  memory                   = var.memory
-
-  execution_role_arn = var.ecs_execution_role_arn
-  task_role_arn      = var.ecs_task_role_arn
-
-  container_definitions = jsonencode([
-  {
-    name      = var.container_name
-    image     = var.laravel_image
-    portMappings = [
-      {
-        containerPort = 80
-        hostPort      = 80
-        protocol      = "tcp"
-      }
-    ],
-    essential = true
-    logConfiguration = {
-      logDriver = "awslogs"
-      options = {
-        awslogs-group         = "/ecs/${var.project}-${var.environment}/task"
-        awslogs-region        = var.aws_region
-        awslogs-stream-prefix = "ecs"
-      }
-    },
-
-    secrets = [
-      for key in var.env_secret_keys : {
-        name  = key
-        valueFrom = "/${var.project}/${var.environment}/${key}"
-      }
-    ],
-
-    environment = [
-      for env in var.container_environment  : {
-        name = env.name
-        value = env.value
-      }
-      if !contains(var.env_secret_keys,env.name)
-    ]
-  }
-])
-}
-
-
 # ----------------------------
-# ECS Service
+# ECS Service (Laravel App)
 # ----------------------------
 resource "aws_ecs_service" "ecs_service" {
   name            = "${var.project}-${var.environment}-ecs-service"
   cluster         = aws_ecs_cluster.ecs_cluster.id
-  task_definition = aws_ecs_task_definition.ecs-task.arn
+  task_definition = module.task_definition_app.task_definition_arn
   launch_type     = "FARGATE"
   desired_count   = var.desired_count
 
@@ -78,7 +25,7 @@ resource "aws_ecs_service" "ecs_service" {
 
   network_configuration {
     subnets         = var.subnet_ids
-    security_groups  = var.security_group_ids
+    security_groups = var.security_group_ids
     assign_public_ip = false
   }
 
@@ -93,4 +40,81 @@ resource "aws_ecs_service" "ecs_service" {
     Project = var.project
     Env     = var.environment
   }
+}
+
+# ----------------------------
+# App Task Definition Module
+# ----------------------------
+module "task_definition_app" {
+  source = "./task_definition_app"
+
+  project         = var.project
+  environment     = var.environment
+  container_name  = var.container_name
+  laravel_image   = var.laravel_image
+  aws_region      = var.aws_region
+  cpu             = var.cpu
+  memory          = var.memory
+
+  log_group_name    = "/ecs/${var.project}-${var.environment}/task/migrate"
+  log_stream_prefix = "ecs-migrate"
+
+  app_name   = var.app_name
+  app_env    = var.app_env
+  app_key    = var.app_key
+  app_debug  = var.app_debug
+  app_url    = var.app_url
+
+  log_channel              = var.log_channel
+  log_deprecations_channel = var.log_deprecations_channel
+  log_level                = var.log_level
+
+  db_connection = var.db_connection
+  db_host       = var.db_host
+  db_port       = var.db_port
+  db_database   = var.db_database
+  db_username   = var.db_username
+  db_password   = var.db_password
+
+  ecs_execution_role_arn = var.ecs_execution_role_arn
+  ecs_task_role_arn      = var.ecs_task_role_arn
+}
+
+# ----------------------------
+# Migrate Task Definition Module
+# ----------------------------
+module "task_definition_migrate" {
+  source = "./task_definition_migrate"
+
+  project     = var.project
+  environment = var.environment
+  aws_region  = var.aws_region
+
+  cpu            = var.cpu
+  memory         = var.memory
+  container_name = var.container_name
+  laravel_image  = var.laravel_image
+
+  log_group_name    = "/ecs/${var.project}-${var.environment}/task/migrate"
+  log_stream_prefix = "ecs-migrate"
+
+  app_name   = var.app_name
+  app_env    = var.app_env
+  app_key    = var.app_key
+  app_debug  = var.app_debug
+  app_url    = var.app_url
+
+  log_channel              = var.log_channel
+  log_deprecations_channel = var.log_deprecations_channel
+  log_level                = var.log_level
+
+  db_connection = var.db_connection
+  db_host       = var.db_host
+  db_port       = var.db_port
+  db_database   = var.db_database
+  db_username   = var.db_username
+  db_password   = var.db_password
+
+  ecs_execution_role_arn = var.ecs_execution_role_arn
+  ecs_task_role_arn      = var.ecs_task_role_arn
 }

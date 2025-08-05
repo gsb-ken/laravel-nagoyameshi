@@ -1,17 +1,33 @@
-resource "aws_ecs_task_definition" "migrate" {
-  family                   = "nagoyameshi-prod-task-migrate"
+resource "aws_ecs_task_definition" "app" {
+  family                   = "${var.project}-${var.environment}-ecs-task"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = var.ecs_execution_role_arn
-  task_role_arn            = var.ecs_task_role_arn
+  cpu                      = var.cpu
+  memory                   = var.memory
+
+  execution_role_arn = var.ecs_execution_role_arn
+  task_role_arn      = var.ecs_task_role_arn
 
   container_definitions = jsonencode([
     {
-      name      = "migrate"
+      name      = var.container_name
       image     = var.laravel_image
+      portMappings = [
+        {
+          containerPort = 80
+          hostPort      = 80
+          protocol      = "tcp"
+        }
+      ],
       essential = true
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "/ecs/${var.project}-${var.environment}/task"
+          awslogs-region        = var.aws_region
+          awslogs-stream-prefix = "ecs"
+        }
+      },
       environment = [
         { name = "APP_NAME",  value = var.app_name },
         { name = "APP_ENV",   value = var.app_env },
@@ -30,15 +46,10 @@ resource "aws_ecs_task_definition" "migrate" {
         { name = "DB_USERNAME",   value = var.db_username },
         { name = "DB_PASSWORD",   value = var.db_password }
       ]
-      command = ["sh", "-c", "php artisan migrate --force 2>&1; echo ExitCode:$?; sleep 60"]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = "/ecs/nagoyameshi-prod/task/migrate"
-          awslogs-region        = "ap-northeast-1"
-          awslogs-stream-prefix = "ecs"
-        }
-      }
     }
   ])
+}
+
+output "task_definition_arn" {
+  value = aws_ecs_task_definition.app.arn
 }

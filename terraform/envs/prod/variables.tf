@@ -46,10 +46,6 @@ variable "laravel_image" {}
 variable "container_name" {
   default = "nagoyameshi-prod-ecs-container"
 }
-variable "container_environment" {
-  type    = list(object({ name = string, value = string }))
-  default = []
-}
 variable "ecr_repository_url" {
   description = "ECR repository URL for the Laravel image"
   type        = string
@@ -72,11 +68,6 @@ variable "db_instance_class" {
 variable "db_password" {
   type      = string
   sensitive = true
-}
-
-variable "env_parameters" {
-  description = "SSM に登録する環境変数のマップ"
-  type        = map(string)
 }
 
 variable "github_owner" {
@@ -104,7 +95,17 @@ variable "codestar_connection_arn" {
   type        = string
   description = "CodeStar Connections ARN for GitHub"
 }
-variable "env_secret_keys" {
-  type        = list(string)
-  description = "ECSタスク定義でsecretsとしてSSMから注入するキー一覧"
-}
+
+variable "app_name" { type = string }
+variable "app_env" { type = string }
+variable "app_key" { type = string }
+variable "app_debug" { type = string }
+
+variable "log_channel" { type = string }
+variable "log_deprecations_channel" { type = string }
+variable "log_level" { type = string }
+
+variable "db_connection" { type = string }
+variable "db_host" { type = string }
+variable "db_port" { type = string }
+variable "db_database" { type = string }

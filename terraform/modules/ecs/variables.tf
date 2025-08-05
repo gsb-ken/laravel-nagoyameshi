@@ -34,20 +34,27 @@ variable "laravel_image" {
 variable "container_name" {
   type        = string
 }
-variable "container_environment" {
-  type = list(object({
-    name  = string
-    value = string
-  }))
-  default     = []
-}
+
 variable "ecs_execution_role_arn" {
   type        = string
 }
 variable "ecs_task_role_arn" {
   type        = string
 }
-variable "env_secret_keys" {
-  type        = list(string)
-  description = "List of keys to load from SSM as secrets"
-}
+
+variable "app_name"  { type = string }
+variable "app_env"   { type = string }
+variable "app_key"   { type = string }
+variable "app_debug" { type = string }
+variable "app_url"   { type = string }
+
+variable "log_channel"              { type = string }
+variable "log_deprecations_channel" { type = string }
+variable "log_level"                { type = string }
+
+variable "db_connection" { type = string }
+variable "db_host"       { type = string }
+variable "db_port"       { type = string }
+variable "db_database"   { type = string }
+variable "db_username"   { type = string }
+variable "db_password"   { type = string }

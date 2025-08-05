@@ -1,6 +1,3 @@
-output "task_definition_arn" {
-  value = aws_ecs_task_definition.migrate.arn
-}
-output "ecs_task_definition_arn" {
+output "aws_ecs_task_definition_arn" {
   value = aws_ecs_task_definition.migrate.arn
 }
