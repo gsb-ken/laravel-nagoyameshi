@@ -86,3 +86,4 @@ resource "aws_codebuild_project" "codebuild" {
 
   source_version = var.github_branch
 }
+data "aws_caller_identity" "current" {}

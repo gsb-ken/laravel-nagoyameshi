@@ -16,38 +16,6 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_policy" {
   role       = aws_iam_role.ecs_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
-resource "aws_iam_role_policy" "ecs_exec_ssm" {
-  name = "ecs-task-ssm-parameter-access"
-  role = aws_iam_role.ecs_execution_role.name
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = ["ssm:GetParameters", 
-        "ssm:GetParameter", 
-        "ssm:GetParametersByPath",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents",
-        "ssmmessages:CreateControlChannel",
-          "ssmmessages:CreateDataChannel",
-          "ssmmessages:OpenControlChannel",
-          "ssmmessages:OpenDataChannel",],
-        Resource = ["arn:aws:ssm:ap-northeast-1:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/${var.environment}/*"]
-      },
-      {
-        Effect = "Allow",
-        Action = [
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "kms:Decrypt"
-        ],
-        Resource = "*"
-      }
-    ]
-  })
-}
 
 # ECS task ---------------------
 resource "aws_iam_role" "ecs_task_role" {
@@ -74,21 +42,6 @@ data "aws_iam_policy_document" "ecs_task_permissions" {
     actions   = ["s3:GetObject", "ssm:GetParameter", "logs:PutLogEvents"]
     resources = ["*"]
   }
-}
-resource "aws_iam_role_policy" "ecs_task_ssm" {
-  name = "AllowSSMParameters"
-  role = aws_iam_role.ecs_task_role.name
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath","logs:PutLogEvents"],
-        Resource = "arn:aws:ssm:ap-northeast-1:${data.aws_caller_identity.current.account_id}:parameter/${var.project}/${var.environment}/*"
-      }
-    ]
-  })
 }
 
 # ------------------------------
@@ -175,7 +128,22 @@ resource "aws_iam_role_policy" "codebuild_ecs_run_task" {
           aws_iam_role.ecs_execution_role.arn,
           aws_iam_role.ecs_task_role.arn
         ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:CompleteLayerUpload",
+          "ecr:DescribeRepositories",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:InitiateLayerUpload",
+          "ecr:PutImage",
+          "ecr:UploadLayerPart"
+         ],
+        "Resource": "*"
       }
+
     ]
   })
 }
