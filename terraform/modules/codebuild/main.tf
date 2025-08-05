@@ -23,6 +23,17 @@ resource "aws_codebuild_project" "codebuild" {
     privileged_mode             = true  # Docker build 必須
     image_pull_credentials_type = "CODEBUILD"
 
+  
+    environment_variable {
+      name  = "PROJECT"
+      value = var.project
+    }
+
+    environment_variable {
+      name  = "ENVIRONMENT"
+      value = var.environment
+    }
+  
     environment_variable {
       name  = "AWS_REGION"
       value = var.aws_region
