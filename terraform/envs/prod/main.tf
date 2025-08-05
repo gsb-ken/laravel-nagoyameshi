@@ -134,7 +134,7 @@ module "ecs_migrate_task" {
   ecs_execution_role_arn = module.iam.ecs_execution_role_arn
   ecs_task_role_arn      = module.iam.ecs_task_role_arn
 
-  laravel_image          = var.laravel_image
+  laravel_image  = var.laravel_image
   container_name = var.container_name
 
   # Laravel 環境変数（本番と同じ値）

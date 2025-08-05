@@ -147,6 +147,27 @@ resource "aws_iam_role_policy" "codebuild_ecs_run_task" {
     ]
   })
 }
+resource "aws_iam_role_policy" "codebuild_cloudwatch_ecs_logs" {
+  name = "${var.project}-${var.environment}-codebuild-ecs-logs"
+  role = aws_iam_role.codebuild.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeLogStreams",
+          "logs:GetLogEvents"
+        ]
+        Resource = [
+          "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/ecs/${var.project}-${var.environment}/task/migrate:*"
+        ]
+      }
+    ]
+  })
+}
+
 
 # ------------------------------
 # CodePipeline Role and Policies

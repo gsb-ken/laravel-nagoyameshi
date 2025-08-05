@@ -68,7 +68,7 @@ phases:
           echo "[WARN] No log stream found for migration task."
           exit 1
         fi
-        
+
         aws logs get-log-events \
           --log-group-name "$LOG_GROUP" \
           --log-stream-name "$LOG_STREAM" \
@@ -78,7 +78,7 @@ phases:
 
       - echo "[POST_BUILD] Writing imagedefinitions.json for ECS Deploy..."
       - printf '[{"name":"%s","imageUri":"%s:latest"}]' "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
-      - cat imagedefinitions.json
+      - ls -l imagedefinitions.json
 
 artifacts:
   files:
