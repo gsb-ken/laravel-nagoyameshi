@@ -161,6 +161,7 @@ resource "aws_iam_role_policy" "codebuild_cloudwatch_ecs_logs" {
           "logs:GetLogEvents"
         ]
         Resource = [
+          "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/ecs/${var.project}-${var.environment}/task/migrate",
           "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/ecs/${var.project}-${var.environment}/task/migrate:*"
         ]
       }
