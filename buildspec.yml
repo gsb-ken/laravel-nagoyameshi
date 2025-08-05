@@ -25,18 +25,21 @@ phases:
       - echo "SUBNET_ID_2=${SUBNET_ID_2}"
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
+      - echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
       - |
-        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
-        RUN_TASK_OUTPUT=$(aws ecs run-task \
+        TASK_ARN=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
           --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1 \
-          --output json)
-        echo "$RUN_TASK_OUTPUT"
+          --output json \
+          | tee /tmp/run-task.json \
+          | jq -r '.tasks[0].taskArn // empty')
 
-        TASK_ARN=$(echo "$RUN_TASK_OUTPUT" | jq -r '.tasks[0].taskArn // empty')
+        echo "[DEBUG] TASK_ARN=${TASK_ARN}"
+        cat /tmp/run-task.json
+
         if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" == "null" ]; then
           echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
           exit 1
@@ -50,6 +53,7 @@ phases:
         sleep 10
 
         echo "[INFO] Fetching CloudWatch Logs for migration task..."
+      - |
         LOG_GROUP="/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate"
         LOG_STREAM=$(aws logs describe-log-streams \
           --log-group-name "$LOG_GROUP" \
@@ -59,10 +63,12 @@ phases:
           --query "logStreams[0].logStreamName" \
           --output text \
           --region ap-northeast-1 || echo "")
+
         if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" == "None" ]; then
           echo "[WARN] No log stream found for migration task."
           exit 1
         fi
+        
         aws logs get-log-events \
           --log-group-name "$LOG_GROUP" \
           --log-stream-name "$LOG_STREAM" \
