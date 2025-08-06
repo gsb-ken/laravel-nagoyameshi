@@ -36,10 +36,10 @@ phases:
 
       - echo "[DEBUG] TASK_ARN=${TASK_ARN}"
       - |
-        if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
-          echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
-          exit 1;
-        fi
+          if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
+            echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
+            exit 1
+          fi
 
       # タスク終了まで待機
       - echo "[INFO] Waiting for migration task to stop..."
@@ -68,10 +68,10 @@ phases:
         done
 
       - |
-        if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[ERROR] Could not find log stream in CloudWatch Logs."
-          exit 1
-        fi
+          if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
+            echo "[ERROR] Could not find log stream in CloudWatch Logs."
+            exit 1
+          fi
 
       # ログの取得
       - echo "[INFO] Fetching log events from CloudWatch Logs..."
@@ -81,7 +81,6 @@ phases:
           --region ap-northeast-1 \
           --query "events[*].message" \
           --output text
-
 
       - echo "[POST_BUILD] Writing imagedefinitions.json for ECS Deploy..."
       - printf '[{"name":"%s","imageUri":"%s:latest"}]' "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
