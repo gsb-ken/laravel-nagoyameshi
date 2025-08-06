@@ -67,9 +67,10 @@ phases:
           sleep 10;
         done
 
-      - if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[ERROR] Could not find log stream in CloudWatch Logs.";
-          exit 1;
+      - |
+        if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
+          echo "[ERROR] Could not find log stream in CloudWatch Logs."
+          exit 1
         fi
 
       # ログの取得
