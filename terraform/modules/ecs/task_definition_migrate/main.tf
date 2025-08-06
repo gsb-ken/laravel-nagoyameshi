@@ -30,7 +30,8 @@ resource "aws_ecs_task_definition" "migrate" {
         { name = "DB_USERNAME",   value = var.db_username },
         { name = "DB_PASSWORD",   value = var.db_password }
       ]
-      command = ["sh", "-c", "php artisan migrate --force 2>&1; echo ExitCode:$?; sleep 60"]
+      # command = ["sh", "-c", "php artisan migrate --force 2>&1; echo ExitCode:$?; sleep 60"]
+      command = ["sh","-c","mysql -h $$DB_HOST -u $$DB_USERNAME -p$$DB_PASSWORD -e 'SELECT NOW();'; sleep 60"]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
