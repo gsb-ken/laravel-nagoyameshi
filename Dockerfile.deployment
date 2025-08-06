@@ -1,7 +1,7 @@
 FROM public.ecr.aws/docker/library/php:8.2-apache
 
 # 必要なPHP拡張をインストール
-RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt/lists/* \
+RUN apt-get update && apt-get install -y default-mysql-client \
     unzip \
     git \
     libzip-dev \
@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y mysql-client && rm -rf /var/lib/apt/lis
     curl \
     wget \
     gnupg \
-    && docker-php-ext-install pdo pdo_mysql zip bcmath
+    && docker-php-ext-install pdo pdo_mysql zip bcmath \
+    && rm -rf /var/lib/apt/lists/*
 
 # Apache mod_rewrite 有効化
 RUN a2enmod rewrite
