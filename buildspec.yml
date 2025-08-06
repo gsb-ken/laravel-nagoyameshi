@@ -27,7 +27,7 @@ phases:
       - echo "SUBNET_ID_2=${SUBNET_ID_2}"
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
-            - |
+      - |
         echo "[POST_BUILD] Running Laravel migration in PUBLIC subnet (test for NAT issue)"
         RUN_TASK_OUTPUT=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
