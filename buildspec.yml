@@ -27,8 +27,8 @@ phases:
       - echo "SUBNET_ID_2=${SUBNET_ID_2}"
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
+      - echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
       - |
-        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
         TASK_ARN=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
@@ -46,43 +46,36 @@ phases:
         fi
 
         echo "[INFO] Migration task started: $TASK_ARN"
-        echo "[INFO] Waiting for task to finish..."
-        aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks $TASK_ARN --region ap-northeast-1
 
-        echo "[INFO] Waiting for CloudWatch Logs for migration task..."
-        LOG_GROUP="/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate"
+        # タスク終了まで待機
+        aws ecs wait tasks-stopped \
+          --cluster ${ECS_CLUSTER_NAME} \
+          --tasks $TASK_ARN \
+          --region ap-northeast-1
 
-        for i in {1..60}; do
-          LOG_STREAM=$(aws logs describe-log-streams \
-            --log-group-name "$LOG_GROUP" \
-            --order-by LastEventTime \
-            --descending \
-            --max-items 1 \
-            --query "logStreams[0].logStreamName" \
-            --output text \
-            --region ap-northeast-1 2>/dev/null || echo "")
-
-          if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
-            echo "[INFO] Found log stream: $LOG_STREAM"
-            echo "[INFO] Waiting 10 seconds to ensure log stream is ready..."
-            sleep 30
-            break
-          fi
-
-          echo "[INFO] Log stream not found yet. Retrying in 5 seconds...$i/60)"
-          sleep 5
-        done
+        # logStreamName をタスクから直接取得
+        LOG_STREAM=$(aws ecs describe-tasks \
+          --cluster ${ECS_CLUSTER_NAME} \
+          --tasks $TASK_ARN \
+          --region ap-northeast-1 \
+          --query "tasks[0].containers[0].logStreamName" \
+          --output text)
 
         if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[WARN] No log stream found for migration task after waiting."
-        else
-          aws logs get-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --log-stream-name "$LOG_STREAM" \
-            --region ap-northeast-1 \
-            --query "events[*].message" \
-            --output text
+          echo "[WARN] No log stream found for migration task."
+          exit 1
         fi
+
+        echo "[INFO] Found log stream: $LOG_STREAM"
+        
+        # CloudWatch Logs 取得
+        aws logs get-log-events \
+          --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
+          --log-stream-name "$LOG_STREAM" \
+          --region ap-northeast-1 \
+          --query "events[*].message" \
+          --output text
+
 
       - echo "[POST_BUILD] Writing imagedefinitions.json for ECS Deploy..."
       - printf '[{"name":"%s","imageUri":"%s:latest"}]' "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
