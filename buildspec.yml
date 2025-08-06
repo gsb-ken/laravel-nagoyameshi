@@ -64,6 +64,8 @@ phases:
 
           if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
             echo "[INFO] Found log stream: $LOG_STREAM"
+            echo "[INFO] Waiting 10 seconds to ensure log stream is ready..."
+            sleep 10
             break
           fi
 
