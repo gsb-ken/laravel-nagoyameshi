@@ -59,7 +59,7 @@ phases:
             --cluster ${ECS_CLUSTER_NAME} \
             --tasks $TASK_ARN \
             --region ap-northeast-1 \
-            --query "tasks[0].containers[0].logStreamName" \
+            --query "tasks[0].containers[?name=='migrate'].logStreamName | [0]" \
             --output text)
 
           if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
@@ -68,7 +68,7 @@ phases:
           fi
 
           echo "[INFO] ECS logStreamName not found yet. Retrying in 5 seconds... ($i/12)"
-          sleep 5
+          sleep 10
         done
 
         if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then

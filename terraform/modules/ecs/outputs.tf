@@ -14,3 +14,16 @@ output "app_task_definition_arn" {
 output "migrate_task_definition_arn" {
   value = module.task_definition_migrate.ecs_task_definition_arn
 }
+
+output "migration_task_definition_family" {
+  value = module.task_definition_migrate.task_definition_family
+}
+
+output "migration_task_definition_arn" {
+  value = module.task_definition_migrate.task_definition_arn
+}
+
+output "migration_task_definition_name" {
+  value = module.task_definition_migrate.task_definition_family
+}
+

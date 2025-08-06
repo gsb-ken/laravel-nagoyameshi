@@ -254,7 +254,7 @@ module "codebuild" {
   ecr_repo_url              = module.ecr.repository_url
   container_name            = var.container_name
   ecs_cluster_name          = module.ecs.ecs_cluster_name
-  migration_task_definition = module.ecs.migrate_task_definition_arn
+  migration_task_definition = module.ecs.migration_task_definition_name
   subnet_id_1               = module.vpc.private_subnet_ids[0]
   subnet_id_2               = module.vpc.private_subnet_ids[1]
   security_group_id         = aws_security_group.ecs_sg.id

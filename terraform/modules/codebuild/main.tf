@@ -54,45 +54,35 @@ resource "aws_codebuild_project" "codebuild" {
       value = var.aws_account_id
     }
     environment_variable {
-    name  = "REPOSITORY_URI"
-    value = var.ecr_repo_url
-  }
+     name  = "REPOSITORY_URI"
+      value = var.ecr_repo_url
+    }
 
-  environment_variable {
-    name  = "ECS_CLUSTER_NAME"
-    value = var.ecs_cluster_name
-  }
+    environment_variable {
+      name  = "ECS_CLUSTER_NAME"
+      value = var.ecs_cluster_name
+    }
 
-  environment_variable {
-    name  = "MIGRATION_TASK_DEFINITION"
-    value = var.migration_task_definition
-  }
+    environment_variable {
+      name  = "MIGRATION_TASK_DEFINITION"
+      value = var.migration_task_definition
+    }
 
-  environment_variable {
-    name  = "SUBNET_ID_1"
-    value = var.subnet_id_1
-  }
+    environment_variable {
+      name  = "SUBNET_ID_1"
+      value = var.subnet_id_1
+    }
 
-  environment_variable {
+    environment_variable {
     name  = "SUBNET_ID_2"
     value = var.subnet_id_2
-  }
+    }
 
   environment_variable {
     name  = "SECURITY_GROUP_ID"
     value = var.security_group_id
   }
 
-
-   environment_variable {
-    name  = "PUBLIC_SUBNET_ID_1"
-    value = var.public_subnet_id_1
-  }
-
-  environment_variable {
-    name  = "PUBLIC_SUBNET_ID_2"
-    value = var.public_subnet_id_2
-  }
   }
 
   source_version = var.github_branch
