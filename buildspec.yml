@@ -57,7 +57,7 @@ phases:
             --descending \
             --max-items 1 \
             --region ap-northeast-1 \
-            --query "logStreams[0].logStreamName" \
+            --query "logStreams[?logStreamName!='None']|[0].logStreamName" \
             --output text)
           if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
             echo "[INFO] Found latest log stream: $LOG_STREAM"
