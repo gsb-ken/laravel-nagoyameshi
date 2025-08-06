@@ -7,3 +7,10 @@ output "ecs_service_name" {
   description = "ECS Service name"
   value       = aws_ecs_service.ecs_service.name
 }
+output "app_task_definition_arn" {
+  value = module.task_definition_app.ecs_task_definition_arn
+}
+
+output "migrate_task_definition_arn" {
+  value = module.task_definition_migrate.ecs_task_definition_arn
+}

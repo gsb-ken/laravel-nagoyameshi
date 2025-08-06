@@ -79,86 +79,7 @@ module "ecs" {
   db_username   = var.db_username
   db_password   = var.db_password
 }
-#------------------------------
-# ECS App Module 呼び出し
-#------------------------------
-module "ecs_app_task" {
-  source = "../../modules/ecs/task_definition_app"
 
-  project     = var.project
-  environment = var.environment
-  aws_region  = var.aws_region
-
-  cpu                    = var.ecs_cpu
-  memory                 = var.ecs_memory
-  ecs_execution_role_arn = module.iam.ecs_execution_role_arn
-  ecs_task_role_arn      = module.iam.ecs_task_role_arn
-
-  laravel_image  = var.laravel_image
-  container_name = var.container_name
-
-  # Laravel 環境変数
-  app_name  = var.app_name
-  app_env   = var.app_env
-  app_key   = var.app_key
-  app_debug = var.app_debug
-  app_url   = module.alb.alb_url
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
-  log_group_name    = "/ecs/${var.project}-${var.environment}/task/app"
-  log_stream_prefix = "ecs-app"
-}
-
-#------------------------------
-# ECS Migrate Module 呼び出し
-#------------------------------
-module "ecs_migrate_task" {
-  source = "../../modules/ecs/task_definition_migrate"
-
-  project     = var.project
-  environment = var.environment
-  aws_region  = var.aws_region
-
-  cpu                    = var.ecs_cpu
-  memory                 = var.ecs_memory
-  ecs_execution_role_arn = module.iam.ecs_execution_role_arn
-  ecs_task_role_arn      = module.iam.ecs_task_role_arn
-
-  laravel_image  = var.laravel_image
-  container_name = var.container_name
-
-  # Laravel 環境変数（本番と同じ値）
-  app_name  = var.app_name
-  app_env   = var.app_env
-  app_key   = var.app_key
-  app_debug = var.app_debug
-  app_url   = module.alb.alb_url # ALBの出力を利用
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
-  # ログ設定
-  log_group_name    = "/ecs/${var.project}-${var.environment}/task/migrate"
-  log_stream_prefix = "ecs-migrate"
-}
 
 # -----------------------------
 # RDS Password 生成
@@ -288,7 +209,7 @@ module "iam" {
   artifact_bucket           = module.s3.artifact_bucket
   codestar_connection_arn   = var.codestar_connection_arn
   codebuild_project_name    = module.codebuild.name
-  migration_task_definition = module.ecs_migrate_task.aws_ecs_task_definition_arn
+  migration_task_definition = module.ecs.migrate_task_definition_arn
 }
 
 # ----------------------------
@@ -333,11 +254,13 @@ module "codebuild" {
   ecr_repo_url              = module.ecr.repository_url
   container_name            = var.container_name
   ecs_cluster_name          = module.ecs.ecs_cluster_name
-  migration_task_definition = module.ecs_migrate_task.aws_ecs_task_definition_arn
+  migration_task_definition = module.ecs.migrate_task_definition_arn
   subnet_id_1               = module.vpc.public_subnet_ids[0]
   subnet_id_2               = module.vpc.public_subnet_ids[1]
   security_group_id         = aws_security_group.ecs_sg.id
   codebuild_role_arn        = module.iam.codebuild_role_arn
+  public_subnet_id_1        = module.vpc.public_subnet_ids[0]
+  public_subnet_id_2        = module.vpc.public_subnet_ids[1]
 }
 
 # ----------------------------

@@ -82,8 +82,22 @@ resource "aws_codebuild_project" "codebuild" {
     name  = "SECURITY_GROUP_ID"
     value = var.security_group_id
   }
+
+
+   environment_variable {
+    name  = "PUBLIC_SUBNET_ID_1"
+    value = var.public_subnet_id_1
+  }
+
+  environment_variable {
+    name  = "PUBLIC_SUBNET_ID_2"
+    value = var.public_subnet_id_2
+  }
   }
 
   source_version = var.github_branch
 }
 data "aws_caller_identity" "current" {}
+
+
+ 

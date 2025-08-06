@@ -27,19 +27,18 @@ phases:
       - echo "SUBNET_ID_2=${SUBNET_ID_2}"
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
-      - |
-        echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
-        TASK_ARN=$(aws ecs run-task \
+            - |
+        echo "[POST_BUILD] Running Laravel migration in PUBLIC subnet (test for NAT issue)"
+        RUN_TASK_OUTPUT=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
           --task-definition ${MIGRATION_TASK_DEFINITION} \
-          --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
+          --network-configuration "awsvpcConfiguration={subnets=[${PUBLIC_SUBNET_ID_1},${PUBLIC_SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=ENABLED}" \
           --region ap-northeast-1 \
-          --output json \
-          | tee /tmp/run-task.json \
-          | jq -r '.tasks[0].taskArn // empty')
+          --output json)
+        echo "$RUN_TASK_OUTPUT"
 
-        echo "[DEBUG] TASK_ARN=${TASK_ARN}"
+        TASK_ARN=$(echo "$RUN_TASK_OUTPUT" | jq -r '.tasks[0].taskArn // empty')
         if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
           echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
           exit 1
@@ -90,3 +89,26 @@ phases:
 artifacts:
   files:
     - imagedefinitions.json
+
+
+# - |
+      #   echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
+      #   TASK_ARN=$(aws ecs run-task \
+      #     --cluster ${ECS_CLUSTER_NAME} \
+      #     --launch-type FARGATE \
+      #     --task-definition ${MIGRATION_TASK_DEFINITION} \
+      #     --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
+      #     --region ap-northeast-1 \
+      #     --output json \
+      #     | tee /tmp/run-task.json \
+      #     | jq -r '.tasks[0].taskArn // empty')
+
+      #   echo "[DEBUG] TASK_ARN=${TASK_ARN}"
+      #   if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
+      #     echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
+      #     exit 1
+      #   fi
+
+      #   echo "[INFO] Migration task started: $TASK_ARN"
+      #   echo "[INFO] Waiting for task to finish..."
+      #   aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks $TASK_ARN --region ap-northeast-1
