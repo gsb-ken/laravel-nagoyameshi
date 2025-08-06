@@ -53,8 +53,8 @@ phases:
           --tasks $TASK_ARN \
           --region ap-northeast-1
 
-        # logStreamName をリトライで取得
-        for i in {1..12}; do  # 最大1分待機（5秒 x 12回）
+        # ① logStreamName を取得できるまで待機
+        for i in {1..12}; do
           LOG_STREAM=$(aws ecs describe-tasks \
             --cluster ${ECS_CLUSTER_NAME} \
             --tasks $TASK_ARN \
@@ -63,18 +63,36 @@ phases:
             --output text)
 
           if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
-            echo "[INFO] Found log stream: $LOG_STREAM"
+            echo "[INFO] Found log stream from ECS: $LOG_STREAM"
             break
           fi
 
-          echo "[INFO] Log stream not found yet. Retrying in 5 seconds... ($i/12)"
+          echo "[INFO] ECS logStreamName not found yet. Retrying in 5 seconds... ($i/12)"
           sleep 5
         done
 
         if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[ERROR] Could not get log stream after waiting."
+          echo "[ERROR] Could not get log stream from ECS."
           exit 1
         fi
+
+        # ② CloudWatch Logs 側にストリームが現れるまで待機
+        for i in {1..12}; do
+          STREAM_EXISTS=$(aws logs describe-log-streams \
+            --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
+            --log-stream-name-prefix "$LOG_STREAM" \
+            --region ap-northeast-1 \
+            --query "length(logStreams)" \
+            --output text)
+
+          if [ "$STREAM_EXISTS" != "0" ]; then
+            echo "[INFO] Log stream is now available in CloudWatch Logs."
+            break
+          fi
+
+          echo "[INFO] Waiting for log stream to be created in CloudWatch Logs... ($i/12)"
+          sleep 5
+        done
 
         # CloudWatch Logs 取得
         aws logs get-log-events \
