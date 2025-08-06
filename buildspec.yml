@@ -52,7 +52,7 @@ phases:
         echo "[INFO] Waiting for CloudWatch Logs for migration task..."
         LOG_GROUP="/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate"
 
-        for i in {1..6}; do
+        for i in {1..60}; do
           LOG_STREAM=$(aws logs describe-log-streams \
             --log-group-name "$LOG_GROUP" \
             --order-by LastEventTime \
@@ -67,7 +67,7 @@ phases:
             break
           fi
 
-          echo "[INFO] Log stream not found yet. Retrying in 5 seconds..."
+          echo "[INFO] Log stream not found yet. Retrying in 5 seconds...$i/60)"
           sleep 5
         done
 
