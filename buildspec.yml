@@ -3,10 +3,6 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "AWS_REGION=${AWS_REGION}"
-      - echo "AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID}"
-      - echo "PROJECT=${PROJECT}"
-      - echo "ENVIRONMENT=${ENVIRONMENT}"
       - echo "[PRE_BUILD] Logging in to Amazon ECR..."
       - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
@@ -28,83 +24,57 @@ phases:
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
       - echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
-      - |
-        TASK_ARN=$(aws ecs run-task \
+
+      - TASK_ARN=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
           --launch-type FARGATE \
           --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1 \
           --output json \
-          | tee /tmp/run-task.json \
           | jq -r '.tasks[0].taskArn // empty')
 
-        echo "[DEBUG] TASK_ARN=${TASK_ARN}"
+      - echo "[DEBUG] TASK_ARN=${TASK_ARN}"
+      - |
         if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
           echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
-          exit 1
+          exit 1;
         fi
 
-        echo "[INFO] Migration task started: $TASK_ARN"
-
-        # タスク終了まで待機
-        aws ecs wait tasks-stopped \
+      # タスク終了まで待機
+      - echo "[INFO] Waiting for migration task to stop..."
+      - aws ecs wait tasks-stopped \
           --cluster ${ECS_CLUSTER_NAME} \
           --tasks $TASK_ARN \
           --region ap-northeast-1
 
-        # ① logStreamName を取得できるまで待機
-        for i in {1..12}; do
-          LOG_STREAM=$(aws ecs describe-tasks \
-            --cluster ${ECS_CLUSTER_NAME} \
-            --tasks $TASK_ARN \
+      # CloudWatch 側から最新のログストリーム名を取得
+      - echo "[INFO] Fetching latest log stream from CloudWatch Logs..."
+      - for i in {1..30}; do
+          LOG_STREAM=$(aws logs describe-log-streams \
+            --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
+            --order-by LastEventTime \
+            --descending \
+            --max-items 1 \
             --region ap-northeast-1 \
-            --query "tasks[0].containers[?name=='migrate'].logStreamName | [0]" \
-            --output text)
-
+            --query "logStreams[0].logStreamName" \
+            --output text);
           if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
-            echo "[INFO] Found log stream from ECS: $LOG_STREAM"
-            break
-          fi
-
-          echo "[INFO] ECS logStreamName not found yet. Retrying in 5 seconds... ($i/12)"
-          sleep 10
+            echo "[INFO] Found latest log stream: $LOG_STREAM";
+            break;
+          fi;
+          echo "[INFO] Log stream not found yet. Retrying in 10 seconds... ($i/30)";
+          sleep 10;
         done
 
-        if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[ERROR] Could not get log stream from ECS."
-          exit 1
+      - if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
+          echo "[ERROR] Could not find log stream in CloudWatch Logs.";
+          exit 1;
         fi
 
-        # DEBUG: CloudWatch上のログストリーム一覧を表示（確認用）
-        echo "[DEBUG] Checking existing log streams in CloudWatch Logs..."
-        aws logs describe-log-streams \
-          --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-          --region ap-northeast-1 \
-          --query "logStreams[].logStreamName" \
-          --output text
-
-
-        # ② CloudWatch Logs 側にストリームが現れるまで待機
-        for i in {1..12}; do
-          STREAM_EXISTS=$(aws logs describe-log-streams \
-            --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-            --log-stream-name-prefix "$LOG_STREAM" \
-            --region ap-northeast-1 \
-            --query "length(logStreams)" \
-            --output text)
-
-          if [ "$STREAM_EXISTS" != "0" ]; then
-            echo "[INFO] Log stream is now available in CloudWatch Logs."
-            break
-          fi
-
-          echo "[INFO] Waiting for log stream to be created in CloudWatch Logs... ($i/12)"
-          sleep 5
-        done
-
-        # CloudWatch Logs 取得
-        aws logs get-log-events \
+      # ログの取得
+      - echo "[INFO] Fetching log events from CloudWatch Logs..."
+      - aws logs get-log-events \
           --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
           --log-stream-name "$LOG_STREAM" \
           --region ap-northeast-1 \
