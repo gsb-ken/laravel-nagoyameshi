@@ -73,7 +73,8 @@ phases:
         fi
 
       - echo "[INFO] Fetching log events from CloudWatch Logs..."
-      - aws logs get-log-events \
+      - |
+        aws logs get-log-events \
           --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
           --log-stream-name "$LOG_STREAM" \
           --region ap-northeast-1 \
