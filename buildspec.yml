@@ -76,6 +76,15 @@ phases:
           exit 1
         fi
 
+        # DEBUG: CloudWatch上のログストリーム一覧を表示（確認用）
+        echo "[DEBUG] Checking existing log streams in CloudWatch Logs..."
+        aws logs describe-log-streams \
+          --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
+          --region ap-northeast-1 \
+          --query "logStreams[].logStreamName" \
+          --output text
+
+
         # ② CloudWatch Logs 側にストリームが現れるまで待機
         for i in {1..12}; do
           STREAM_EXISTS=$(aws logs describe-log-streams \
