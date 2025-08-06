@@ -255,8 +255,8 @@ module "codebuild" {
   container_name            = var.container_name
   ecs_cluster_name          = module.ecs.ecs_cluster_name
   migration_task_definition = module.ecs.migrate_task_definition_arn
-  subnet_id_1               = module.vpc.public_subnet_ids[0]
-  subnet_id_2               = module.vpc.public_subnet_ids[1]
+  subnet_id_1               = module.vpc.private_subnet_ids[0]
+  subnet_id_2               = module.vpc.private_subnet_ids[1]
   security_group_id         = aws_security_group.ecs_sg.id
   codebuild_role_arn        = module.iam.codebuild_role_arn
   public_subnet_id_1        = module.vpc.public_subnet_ids[0]
