@@ -109,3 +109,9 @@ variable "db_connection" { type = string }
 variable "db_host" { type = string }
 variable "db_port" { type = string }
 variable "db_database" { type = string }
+
+variable "filesystem_disk" {type = string}
+variable "aws_default_region" {type = string}
+variable "aws_bucket" {type = string}
+variable "aws_url" {type = string}
+variable "aws_use_path_style_endpoint" {type = string}

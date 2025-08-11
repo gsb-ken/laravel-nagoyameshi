@@ -28,7 +28,13 @@ resource "aws_ecs_task_definition" "migrate" {
         { name = "DB_PORT",       value = var.db_port },
         { name = "DB_DATABASE",   value = var.db_database },
         { name = "DB_USERNAME",   value = var.db_username },
-        { name = "DB_PASSWORD",   value = var.db_password }
+        { name = "DB_PASSWORD",   value = var.db_password },
+        
+        {name = "filesystem_disk", value = FILESYSTEM_DISK},
+        {name = "aws_default_region", value = AWS_DEFAULT_REGION},
+        {name = "aws_bucket", value =AWS_BUCKET },
+        {name = "aws_url", value = AWS_URL},
+        {name = "aws_use_path_style_endpoint", value = AWS_USE_PATH_STYLE_ENDPOINT}
       ]
       command = ["sh","-c","php artisan migrate --force; sleep 30"]
       logConfiguration = {

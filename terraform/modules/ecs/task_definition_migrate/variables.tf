@@ -26,5 +26,11 @@ variable "db_database"   { type = string }
 variable "db_username"   { type = string }
 variable "db_password"   { type = string }
 
+variable "filesystem_disk" {type = string}
+variable "aws_default_region" {type = string}
+variable "aws_bucket" {type = string}
+variable "aws_url" {type = string}
+variable "aws_use_path_style_endpoint" {type = string}
+
 variable "ecs_execution_role_arn" { type = string }
 variable "ecs_task_role_arn"      { type = string }
