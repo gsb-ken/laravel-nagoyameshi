@@ -10,12 +10,12 @@ phases:
     commands:
       - echo "[BUILD] Building Laravel Docker image..."
       - docker build --no-cache -f Dockerfile.deployment -t ${CONTAINER_NAME} .
-      - docker tag ${CONTAINER_NAME} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-prod-ecr:latest
+      - docker tag ${CONTAINER_NAME} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
 
   post_build:
     commands:
       - echo "[POST_BUILD] Pushing image to ECR..."
-      - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-prod-ecr:latest
+      - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
 
       - echo "MIGRATION_TASK_DEFINITION=${MIGRATION_TASK_DEFINITION}"
       - echo "ECS_CLUSTER_NAME=${ECS_CLUSTER_NAME}"

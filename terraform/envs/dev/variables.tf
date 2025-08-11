@@ -40,11 +40,11 @@ variable "ecs_memory" {
   default = "512"
 }
 variable "ecs_desired_count" {
-  default = 2
+  default = 1
 }
 variable "laravel_image" {}
 variable "container_name" {
-  default = "nagoyameshi-prod-ecs-container"
+  default = "nagoyameshi-dev-ecs-container"
 }
 variable "ecr_repository_url" {
   description = "ECR repository URL for the Laravel image"

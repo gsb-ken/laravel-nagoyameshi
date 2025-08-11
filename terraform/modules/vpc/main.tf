@@ -158,6 +158,8 @@ resource "aws_eip" "eip_nat" {
 
   tags = {
     Name = "${var.project}-${var.environment}-eip-nat-${element(var.availability_zones, count.index)}"
+    Project = var.project
+    Env = var.environment
   }
 }
 

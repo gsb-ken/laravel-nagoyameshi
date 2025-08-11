@@ -1,5 +1,5 @@
 resource "aws_ecs_task_definition" "migrate" {
-  family                   = "nagoyameshi-prod-task-migrate"
+  family                   = "${var.project}-${var.environment}-task-migrate"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = "256"
@@ -34,7 +34,7 @@ resource "aws_ecs_task_definition" "migrate" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = "/ecs/nagoyameshi-prod/task/migrate"
+          awslogs-group         = "/ecs/${var.project}-${var.environment}/task/migrate"
           awslogs-region        = "ap-northeast-1"
           awslogs-stream-prefix = "ecs"
         }
