@@ -8,7 +8,7 @@ output "ecs_service_name" {
   value       = aws_ecs_service.ecs_service.name
 }
 output "app_task_definition_arn" {
-  value = module.task_definition_app.ecs_task_definition_arn
+  value = module.task_definition_app.task_definition_arn
 }
 
 output "migrate_task_definition_arn" {

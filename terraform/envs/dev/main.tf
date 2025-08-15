@@ -61,30 +61,7 @@ module "ecs" {
   ecs_execution_role_arn = module.iam.ecs_execution_role_arn
   ecs_task_role_arn      = module.iam.ecs_task_role_arn
 
-  # Laravel 環境変数（tfvars から）
-  app_name  = var.app_name
-  app_env   = var.app_env
-  app_key   = var.app_key
-  app_debug = var.app_debug
-  app_url   = module.alb.alb_url # ALBの出力を利用
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
-  filesystem_disk=var.filesystem_disk
-  aws_default_region=var.aws_default_region
-  aws_bucket=var.aws_bucket
-  aws_url=var.aws_url
-  aws_use_path_style_endpoint=var.aws_use_path_style_endpoint
-
+  ssm_dependency = module.ssm
 }
 
 
@@ -269,6 +246,18 @@ module "codebuild" {
   public_subnet_id_1        = module.vpc.public_subnet_ids[0]
   public_subnet_id_2        = try(module.vpc.public_subnet_ids[1], module.vpc.public_subnet_ids[0])
 }
+
+# ----------------------------
+# SSM Module 呼び出し
+# ----------------------------
+module "ssm" {
+  source      = "../../modules/ssm"
+  project     = var.project
+  environment = var.environment
+  env         = var.env
+}
+
+
 
 # ----------------------------
 # S3 Module 呼び出し

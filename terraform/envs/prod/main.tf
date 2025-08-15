@@ -79,11 +79,11 @@ module "ecs" {
   db_username   = var.db_username
   db_password   = var.db_password
 
-  filesystem_disk=var.filesystem_disk
-  aws_default_region=var.aws_default_region
-  aws_bucket=var.aws_bucket
-  aws_url=var.aws_url
-  aws_use_path_style_endpoint=var.aws_use_path_style_endpoint
+  filesystem_disk             = var.filesystem_disk
+  aws_default_region          = var.aws_default_region
+  aws_bucket                  = var.aws_bucket
+  aws_url                     = var.aws_url
+  aws_use_path_style_endpoint = var.aws_use_path_style_endpoint
 }
 
 

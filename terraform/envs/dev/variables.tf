@@ -51,24 +51,21 @@ variable "ecr_repository_url" {
   type        = string
 }
 
-
 # RDS関連 --------------------------------------------------
 variable "db_name" {
   type = string
 }
-
-variable "db_username" {
-  type = string
-}
-
 variable "db_instance_class" {
   type    = string
   default = "db.t3.micro"
 }
 variable "db_password" {
-  type      = string
-  sensitive = true
+  type = string
 }
+variable "db_username" {
+  type = string
+}
+
 
 variable "github_owner" {
   description = "GitHub username or organization name"
@@ -95,23 +92,5 @@ variable "codestar_connection_arn" {
   type        = string
   description = "CodeStar Connections ARN for GitHub"
 }
-
-variable "app_name" { type = string }
-variable "app_env" { type = string }
-variable "app_key" { type = string }
-variable "app_debug" { type = string }
-
-variable "log_channel" { type = string }
-variable "log_deprecations_channel" { type = string }
-variable "log_level" { type = string }
-
-variable "db_connection" { type = string }
-variable "db_host" { type = string }
-variable "db_port" { type = string }
-variable "db_database" { type = string }
-
-variable "filesystem_disk" {type = string}
-variable "aws_default_region" {type = string}
-variable "aws_bucket" {type = string}
-variable "aws_url" {type = string}
-variable "aws_use_path_style_endpoint" {type = string}
+# SSM 変数 -------------------------------------------------
+variable "env" { type = map(string) }

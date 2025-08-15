@@ -59,25 +59,10 @@ module "task_definition_app" {
   log_group_name    = "/ecs/${var.project}-${var.environment}/task/migrate"
   log_stream_prefix = "ecs-migrate"
 
-  app_name   = var.app_name
-  app_env    = var.app_env
-  app_key    = var.app_key
-  app_debug  = var.app_debug
-  app_url    = var.app_url
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
   ecs_execution_role_arn = var.ecs_execution_role_arn
   ecs_task_role_arn      = var.ecs_task_role_arn
+  ssm_dependency = var.ssm_dependency
+
 }
 
 # ----------------------------
@@ -98,23 +83,8 @@ module "task_definition_migrate" {
   log_group_name    = "/ecs/${var.project}-${var.environment}/task/migrate"
   log_stream_prefix = "ecs-migrate"
 
-  app_name   = var.app_name
-  app_env    = var.app_env
-  app_key    = var.app_key
-  app_debug  = var.app_debug
-  app_url    = var.app_url
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
   ecs_execution_role_arn = var.ecs_execution_role_arn
   ecs_task_role_arn      = var.ecs_task_role_arn
+  ssm_dependency = var.ssm_dependency
+
 }
