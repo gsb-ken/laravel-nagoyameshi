@@ -27,6 +27,21 @@ phases:
       - export MIGRATE_CONTAINER_NAME=$(aws ecs describe-task-definition --task-definition "${MIGRATION_TASK_DEFINITION}" --region ap-northeast-1 --query "taskDefinition.containerDefinitions[0].name" --output text)
       - echo "[DEBUG] MIGRATE_CONTAINER_NAME=${MIGRATE_CONTAINER_NAME}"
 
+      # 既存のログインの前でも後でも可
+      - echo "[CHECK] forbid plain http URLs in repo"
+      - |
+        set -e
+        # 許可しない http の候補（必要に応じて追加）
+        BAD='http://(dev\.hoshishi\.net|nagoyameshi-.*alb.*amazonaws\.com|localhost|127\.0\.0\.1)'
+        # よく混入する場所だけチェック（必要なら src も追加）
+        TARGETS="resources public"
+        if grep -RInE "$BAD" $TARGETS ; then
+          echo "[ERROR] Found forbidden http URLs above. Fix them (use // or https or asset())."
+          exit 1
+        else
+          echo "[OK] No forbidden http URLs in $TARGETS"
+        fi
+
       # (1) 実行時の APP_URL と Laravelの config('app.url') を CloudWatch Logs に出力
       - echo "[DEBUG] Run a short task to print APP_URL and config('app.url')"
       - |
