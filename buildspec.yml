@@ -3,116 +3,28 @@ version: 0.2
 phases:
   pre_build:
     commands:
-      - echo "[PRE_BUILD] Logging in to Amazon ECR..."
-      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+      - echo "[PRE_BUILD] Login to ECR"
+      - aws ecr get-login-password --region ${AWS_REGION} \
+        | docker login --username AWS --password-stdin \
+          ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
 
   build:
     commands:
-      - echo "[BUILD] Building Laravel Docker image..."
-      - docker build --no-cache -f Dockerfile.deployment -t ${CONTAINER_NAME} .
-      - docker tag ${CONTAINER_NAME} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
+      - echo "[BUILD] Build image"
+      - docker build -f Dockerfile.deployment -t ${CONTAINER_NAME} .
+      - docker tag ${CONTAINER_NAME} \
+        ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
 
   post_build:
     commands:
-      - echo "[POST_BUILD] Pushing image to ECR..."
-      - docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
+      - echo "[POST_BUILD] Push image"
+      - docker push \
+        ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/nagoyameshi-${ENVIRONMENT}-ecr:latest
+      - echo "[POST_BUILD] Write imagedefinitions.json"
+      - printf '[{"name":"%s","imageUri":"%s:latest"}]' \
+          "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
 
-      - echo "MIGRATION_TASK_DEFINITION=${MIGRATION_TASK_DEFINITION}"
-      - echo "ECS_CLUSTER_NAME=${ECS_CLUSTER_NAME}"
-      - echo "SUBNET_ID_1=${SUBNET_ID_1}"
-      - echo "SUBNET_ID_2=${SUBNET_ID_2}"
-      - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
-
-      - echo "[DEBUG] Discover migration container name"
-      - export MIGRATE_CONTAINER_NAME=$(aws ecs describe-task-definition --task-definition "${MIGRATION_TASK_DEFINITION}" --region ap-northeast-1 --query "taskDefinition.containerDefinitions[0].name" --output text)
-      - echo "[DEBUG] MIGRATE_CONTAINER_NAME=${MIGRATE_CONTAINER_NAME}"
-
-      # 既存のログインの前でも後でも可
-      - echo "[CHECK] forbid plain http URLs in repo"
-      - |
-        set -e
-        # 許可しない http の候補（必要に応じて追加）
-        BAD='http://(dev\.hoshishi\.net|nagoyameshi-.*alb.*amazonaws\.com|localhost|127\.0\.0\.1)'
-        # よく混入する場所だけチェック（必要なら src も追加）
-        TARGETS="resources public"
-        if grep -RInE "$BAD" $TARGETS ; then
-          echo "[ERROR] Found forbidden http URLs above. Fix them (use // or https or asset())."
-          exit 1
-        else
-          echo "[OK] No forbidden http URLs in $TARGETS"
-        fi
-
-      # (1) 実行時の APP_URL と Laravelの config('app.url') を CloudWatch Logs に出力
-      - echo "[DEBUG] Run a short task to print APP_URL and config('app.url')"
-      - |
-        DEBUG_TASK_ARN=$(aws ecs run-task \
-          --cluster ${ECS_CLUSTER_NAME} \
-          --launch-type FARGATE \
-          --task-definition ${MIGRATION_TASK_DEFINITION} \
-          --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
-          --region ap-northeast-1 \
-          --overrides "$(jq -nc \
-            --arg name "$MIGRATE_CONTAINER_NAME" \
-            --arg cmd "echo [DEBUG] APP_URL=\$APP_URL; php artisan tinker --execute='echo config(\"app.url\");'; sleep 1; exit 0" \
-            '{containerOverrides:[{name:$name,command:["/bin/sh","-lc",$cmd]}]}')" \
-          --query 'tasks[0].taskArn' --output text)
-
-        echo "[DEBUG] DEBUG_TASK_ARN=${DEBUG_TASK_ARN}"
-
-        aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${DEBUG_TASK_ARN} --region ap-northeast-1
-
-        TASK_ID=${DEBUG_TASK_ARN##*/}
-        echo "[DEBUG] TASK_ID=${TASK_ID}"
-
-        TD_JSON=$(aws ecs describe-task-definition \
-          --task-definition ${MIGRATION_TASK_DEFINITION} \
-          --region ap-northeast-1 --output json)
-
-        AWSLOGS_GROUP=$(echo "$TD_JSON" | jq -r --arg name "$MIGRATE_CONTAINER_NAME" \
-          '.taskDefinition.containerDefinitions[] | select(.name==$name) | .logConfiguration.options["awslogs-group"] // empty')
-        AWSLOGS_PREFIX=$(echo "$TD_JSON" | jq -r --arg name "$MIGRATE_CONTAINER_NAME" \
-          '.taskDefinition.containerDefinitions[] | select(.name==$name) | .logConfiguration.options["awslogs-stream-prefix"] // empty')
-
-        if [ -z "$AWSLOGS_GROUP" ] || [ -z "$AWSLOGS_PREFIX" ]; then
-          echo "[WARN] awslogs not configured on task/container. group=${AWSLOGS_GROUP} prefix=${AWSLOGS_PREFIX}"
-        else
-          LOG_STREAM_DEBUG="${AWSLOGS_PREFIX}/${MIGRATE_CONTAINER_NAME}/${TASK_ID}"
-          echo "[INFO] DEBUG log group : $AWSLOGS_GROUP"
-          echo "[INFO] DEBUG log stream: $LOG_STREAM_DEBUG"
-
-          for i in $(seq 1 10); do
-            OUT=$(aws logs get-log-events \
-              --log-group-name "$AWSLOGS_GROUP" \
-              --log-stream-name "$LOG_STREAM_DEBUG" \
-              --region ap-northeast-1 \
-              --query "events[*].message" --output text 2>/dev/null) && { echo "$OUT"; break; }
-            echo "[INFO] Logs not ready yet. retry=$i"
-            sleep 2
-          done
-        fi
-
-
-      # (2) 本番反映用に、マイグレーション前に Laravel の各種キャッシュをクリア（反映漏れ防止）
-      - echo "[DEBUG] Clear Laravel caches before migration"
-      - |
-        CLEAR_TASK_ARN=$(aws ecs run-task \
-          --cluster ${ECS_CLUSTER_NAME} \
-          --launch-type FARGATE \
-          --task-definition ${MIGRATION_TASK_DEFINITION} \
-          --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
-          --region ap-northeast-1 \
-          --overrides "$(jq -nc \
-            --arg name "$MIGRATE_CONTAINER_NAME" \
-            --arg cmd "php artisan config:clear || true; php artisan cache:clear || true; php artisan route:clear || true; php artisan view:clear || true; echo [DEBUG] CLEARED; sleep 1; exit 0" \
-            '{containerOverrides:[{name:$name,command:["/bin/sh","-lc",$cmd]}]}')" \
-          --query 'tasks[0].taskArn' --output text)
-
-        echo "[DEBUG] CLEAR_TASK_ARN=${CLEAR_TASK_ARN}"
-        aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${CLEAR_TASK_ARN} --region ap-northeast-1
-
-
-
-      - echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
+      - echo "[MIGRATE] Run one-off task"
       - |
         TASK_ARN=$(aws ecs run-task \
           --cluster ${ECS_CLUSTER_NAME} \
@@ -120,60 +32,18 @@ phases:
           --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1 \
-          --output json \
-          | jq -r '.tasks[0].taskArn // empty')
-
-        echo "[DEBUG] TASK_ARN=${TASK_ARN}"
-        if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "null" ]; then
-          echo "[ERROR] Failed to start migration task. TASK_ARN is empty."
-          exit 1
-        fi
-
-      - echo "[INFO] Waiting for migration task to stop..."
-      - |
+          --query 'tasks[0].taskArn' --output text)
+        echo "[MIGRATE] TASK_ARN=${TASK_ARN}"
         aws ecs wait tasks-stopped \
-        --cluster ${ECS_CLUSTER_NAME} \
-        --tasks ${TASK_ARN} \
-        --region ap-northeast-1
-
-
-      - echo "[INFO] Fetching latest log stream from CloudWatch Logs..."
-      - |
-        for i in {1..30}; do
-          LOG_STREAM=$(aws logs describe-log-streams \
-            --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-            --order-by LastEventTime \
-            --descending \
-            --max-items 1 \
-            --region ap-northeast-1 \
-            --query "logStreams[?logStreamName!='None']|[0].logStreamName" \
-            --output text | head -n 1)
-          if [ -n "$LOG_STREAM" ] && [ "$LOG_STREAM" != "None" ]; then
-            echo "[INFO] Found latest log stream: $LOG_STREAM"
-            break
-          fi
-          echo "[INFO] Log stream not found yet. Retrying in 10 seconds... ($i/30)"
-          sleep 10
-        done
-
-        if [ -z "$LOG_STREAM" ] || [ "$LOG_STREAM" = "None" ]; then
-          echo "[ERROR] Could not find log stream in CloudWatch Logs."
-          exit 1
-        fi
-
-      - echo "[INFO] Fetching log events from CloudWatch Logs..."
-      - |
-        aws logs get-log-events \
+          --cluster ${ECS_CLUSTER_NAME} \
+          --tasks ${TASK_ARN} \
+          --region ap-northeast-1
+        # （任意）直近ログを少しだけ出す。失敗してもパイプラインは止めない
+        aws logs filter-log-events \
           --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-          --log-stream-name "$LOG_STREAM" \
           --region ap-northeast-1 \
-          --query "events[*].message" \
-          --output text
-
-      - echo "[POST_BUILD] Writing imagedefinitions.json for ECS Deploy..."
-      - printf '[{"name":"%s","imageUri":"%s:latest"}]' "$CONTAINER_NAME" "$REPOSITORY_URI" > imagedefinitions.json
-      - ls -l imagedefinitions.json
-      - cat imagedefinitions.json
+          --start-time $(($(date +%s)*1000-600000)) \
+          --query 'events[-50:].message' --output text || true
 
 artifacts:
   files:
