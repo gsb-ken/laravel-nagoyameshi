@@ -45,11 +45,14 @@ phases:
         echo "[DEBUG] DEBUG_TASK_ARN=${DEBUG_TASK_ARN}"
         aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${DEBUG_TASK_ARN} --region ap-northeast-1
 
-        LOG_STREAM_DEBUG=$(aws logs describe-log-streams \
-          --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-          --order-by LastEventTime --descending --max-items 1 \
+        LOG_STREAM_DEBUG=$(aws ecs describe-tasks \
+          --cluster ${ECS_CLUSTER_NAME} \
+          --tasks ${DEBUG_TASK_ARN} \
           --region ap-northeast-1 \
-          --query "logStreams[0].logStreamName" --output text)
+          --query "tasks[0].containers[0].logStreamName" \
+          --output text)
+
+        echo "[INFO] DEBUG log stream (from DescribeTasks): $LOG_STREAM_DEBUG"
 
         echo "[INFO] Fetching DEBUG log stream: $LOG_STREAM_DEBUG"
         aws logs get-log-events \

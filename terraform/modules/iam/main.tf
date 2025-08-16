@@ -104,10 +104,10 @@ resource "aws_iam_role" "codebuild" {
     ]
   })
 }
+# S3アーティファクトのバケット
 resource "aws_iam_role_policy" "codebuild_s3_access" {
   name = "${var.project}-${var.environment}-codebuild-s3-access"
   role = aws_iam_role.codebuild.name
-
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -124,14 +124,15 @@ resource "aws_iam_role_policy" "codebuild_s3_access" {
     ]
   })
 }
+# ECR push/pull
 resource "aws_iam_role_policy_attachment" "codebuild_ecr_access" {
   role       = aws_iam_role.codebuild.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
 }
+# Codebuildのログ出力
 resource "aws_iam_role_policy" "codebuild_cloudwatch_logs" {
   name = "${var.project}-${var.environment}-codebuild-logs"
   role = aws_iam_role.codebuild.name
-
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -143,50 +144,47 @@ resource "aws_iam_role_policy" "codebuild_cloudwatch_logs" {
     ]
   })
 }
+# ECS 実行/参照
 resource "aws_iam_role_policy" "codebuild_ecs_run_task" {
   name = "${var.project}-${var.environment}-codebuild-ecs-run-task"
   role = aws_iam_role.codebuild.name
-
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
+      # RunTask は taskdef をリソースに、cluster を Condition で絞る
       {
-        Effect = "Allow",
-        Action = [
-          "ecs:RunTask",
+        Sid     = "RunMigrationTask",
+        Effect  = "Allow",
+        Action  = ["ecs:RunTask"],
+        Resource = "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task-definition/${var.project}-${var.environment}-task-migrate:*",
+        Condition = {
+          ArnEquals = {
+            "ecs:cluster" = "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:cluster/${var.project}-${var.environment}-ecs-cluster"
+          }
+        }
+      },
+      # Describe 系はリソース絞り不可 → "*" 必須
+      {
+        Sid     = "DescribeEcsThings",
+        Effect  = "Allow",
+        Action  = [
           "ecs:DescribeTasks",
           "ecs:DescribeTaskDefinition",
           "ecs:ListTasks",
           "ecs:DescribeClusters"
         ],
-        Resource =[ 
-          "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task-definition/${var.project}-${var.environment}-task-migrate:*",
-          "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task/${var.project}-${var.environment}-ecs-cluster/*"
-        ]
+        Resource = "*"
       },
+      # タスク実行ロール/タスクロールの委譲
       {
-        Effect = "Allow",
-        Action = "iam:PassRole",
+        Sid     = "PassTaskRoles",
+        Effect  = "Allow",
+        Action  = "iam:PassRole",
         Resource = [
           aws_iam_role.ecs_execution_role.arn,
           aws_iam_role.ecs_task_role.arn
         ]
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:CompleteLayerUpload",
-          "ecr:DescribeRepositories",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:InitiateLayerUpload",
-          "ecr:PutImage",
-          "ecr:UploadLayerPart"
-         ],
-        "Resource": "*"
       }
-
     ]
   })
 }
@@ -201,7 +199,8 @@ resource "aws_iam_role_policy" "codebuild_cloudwatch_ecs_logs" {
         Effect = "Allow"
         Action = [
           "logs:DescribeLogStreams",
-          "logs:GetLogEvents"
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents"
         ]
         Resource = [
           "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:/ecs/${var.project}-${var.environment}/task/migrate",
