@@ -43,23 +43,39 @@ phases:
           --query 'tasks[0].taskArn' --output text)
 
         echo "[DEBUG] DEBUG_TASK_ARN=${DEBUG_TASK_ARN}"
+
         aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${DEBUG_TASK_ARN} --region ap-northeast-1
 
-        LOG_STREAM_DEBUG=$(aws ecs describe-tasks \
-          --cluster ${ECS_CLUSTER_NAME} \
-          --tasks ${DEBUG_TASK_ARN} \
-          --region ap-northeast-1 \
-          --query "tasks[0].containers[0].logStreamName" \
-          --output text)
+        TASK_ID=${DEBUG_TASK_ARN##*/}
+        echo "[DEBUG] TASK_ID=${TASK_ID}"
 
-        echo "[INFO] DEBUG log stream (from DescribeTasks): $LOG_STREAM_DEBUG"
+        TD_JSON=$(aws ecs describe-task-definition \
+          --task-definition ${MIGRATION_TASK_DEFINITION} \
+          --region ap-northeast-1 --output json)
 
-        echo "[INFO] Fetching DEBUG log stream: $LOG_STREAM_DEBUG"
-        aws logs get-log-events \
-          --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
-          --log-stream-name "$LOG_STREAM_DEBUG" \
-          --region ap-northeast-1 \
-          --query "events[*].message" --output text
+        AWSLOGS_GROUP=$(echo "$TD_JSON" | jq -r --arg name "$MIGRATE_CONTAINER_NAME" \
+          '.taskDefinition.containerDefinitions[] | select(.name==$name) | .logConfiguration.options["awslogs-group"] // empty')
+        AWSLOGS_PREFIX=$(echo "$TD_JSON" | jq -r --arg name "$MIGRATE_CONTAINER_NAME" \
+          '.taskDefinition.containerDefinitions[] | select(.name==$name) | .logConfiguration.options["awslogs-stream-prefix"] // empty')
+
+        if [ -z "$AWSLOGS_GROUP" ] || [ -z "$AWSLOGS_PREFIX" ]; then
+          echo "[WARN] awslogs not configured on task/container. group=${AWSLOGS_GROUP} prefix=${AWSLOGS_PREFIX}"
+        else
+          LOG_STREAM_DEBUG="${AWSLOGS_PREFIX}/${MIGRATE_CONTAINER_NAME}/${TASK_ID}"
+          echo "[INFO] DEBUG log group : $AWSLOGS_GROUP"
+          echo "[INFO] DEBUG log stream: $LOG_STREAM_DEBUG"
+
+          for i in $(seq 1 10); do
+            OUT=$(aws logs get-log-events \
+              --log-group-name "$AWSLOGS_GROUP" \
+              --log-stream-name "$LOG_STREAM_DEBUG" \
+              --region ap-northeast-1 \
+              --query "events[*].message" --output text 2>/dev/null) && { echo "$OUT"; break; }
+            echo "[INFO] Logs not ready yet. retry=$i"
+            sleep 2
+          done
+        fi
+
 
       # (2) 本番反映用に、マイグレーション前に Laravel の各種キャッシュをクリア（反映漏れ防止）
       - echo "[DEBUG] Clear Laravel caches before migration"
