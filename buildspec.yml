@@ -24,14 +24,7 @@ phases:
       - echo "SECURITY_GROUP_ID=${SECURITY_GROUP_ID}"
 
       - echo "[DEBUG] Discover migration container name"
-      - >
-        MIGRATE_CONTAINER_NAME=$(
-          aws ecs describe-task-definition
-          --task-definition ${MIGRATION_TASK_DEFINITION}
-          --region ap-northeast-1
-          --query "taskDefinition.containerDefinitions[0].name"
-          --output text
-        )
+      - export MIGRATE_CONTAINER_NAME=$(aws ecs describe-task-definition --task-definition "${MIGRATION_TASK_DEFINITION}" --region ap-northeast-1 --query "taskDefinition.containerDefinitions[0].name" --output text)
       - echo "[DEBUG] MIGRATE_CONTAINER_NAME=${MIGRATE_CONTAINER_NAME}"
 
       # (1) 実行時の APP_URL と Laravelの config('app.url') を CloudWatch Logs に出力
@@ -43,18 +36,15 @@ phases:
           --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1 \
-          --overrides '{
-            "containerOverrides": [{
-              "name": "'"$MIGRATE_CONTAINER_NAME"'",
-              "command": ["/bin/sh","-lc","echo [DEBUG] APP_URL=$APP_URL; php artisan tinker --execute='\''echo config(\"app.url\");'\''; sleep 1; exit 0"]
-            }]
-          }' \
+          --overrides "$(jq -nc \
+            --arg name "$MIGRATE_CONTAINER_NAME" \
+            --arg cmd "echo [DEBUG] APP_URL=\$APP_URL; php artisan tinker --execute='echo config(\"app.url\");'; sleep 1; exit 0" \
+            '{containerOverrides:[{name:$name,command:["/bin/sh","-lc",$cmd]}]}')" \
           --query 'tasks[0].taskArn' --output text)
 
         echo "[DEBUG] DEBUG_TASK_ARN=${DEBUG_TASK_ARN}"
         aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${DEBUG_TASK_ARN} --region ap-northeast-1
 
-        # 直近のデバッグログを取得
         LOG_STREAM_DEBUG=$(aws logs describe-log-streams \
           --log-group-name "/ecs/${PROJECT}-${ENVIRONMENT}/task/migrate" \
           --order-by LastEventTime --descending --max-items 1 \
@@ -77,16 +67,15 @@ phases:
           --task-definition ${MIGRATION_TASK_DEFINITION} \
           --network-configuration "awsvpcConfiguration={subnets=[${SUBNET_ID_1},${SUBNET_ID_2}],securityGroups=[${SECURITY_GROUP_ID}],assignPublicIp=DISABLED}" \
           --region ap-northeast-1 \
-          --overrides '{
-            "containerOverrides": [{
-              "name": "'"$MIGRATE_CONTAINER_NAME"'",
-              "command": ["/bin/sh","-lc","php artisan config:clear || true; php artisan cache:clear || true; php artisan route:clear || true; php artisan view:clear || true; echo [DEBUG] CLEARED; sleep 1; exit 0"]
-            }]
-          }' \
+          --overrides "$(jq -nc \
+            --arg name "$MIGRATE_CONTAINER_NAME" \
+            --arg cmd "php artisan config:clear || true; php artisan cache:clear || true; php artisan route:clear || true; php artisan view:clear || true; echo [DEBUG] CLEARED; sleep 1; exit 0" \
+            '{containerOverrides:[{name:$name,command:["/bin/sh","-lc",$cmd]}]}')" \
           --query 'tasks[0].taskArn' --output text)
 
         echo "[DEBUG] CLEAR_TASK_ARN=${CLEAR_TASK_ARN}"
         aws ecs wait tasks-stopped --cluster ${ECS_CLUSTER_NAME} --tasks ${CLEAR_TASK_ARN} --region ap-northeast-1
+
 
 
       - echo "[POST_BUILD] Running Laravel migration with ${MIGRATION_TASK_DEFINITION}"
