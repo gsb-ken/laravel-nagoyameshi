@@ -102,7 +102,11 @@ resource "aws_route_table" "private_rt" {
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.natgw[count.index].id
+    nat_gateway_id = (
+      var.nat_mode == "none"   ? null :
+      var.nat_mode == "single" ? aws_nat_gateway.natgw[0].id :
+      aws_nat_gateway.natgw[count.index].id
+    )
   }
 
   tags = {
@@ -128,7 +132,7 @@ resource "aws_route_table" "isolated_rt" {
     Name    = "${var.project}-${var.environment}-isolated-rt"
     Project = var.project
     Env     = var.environment
-    type    = "private"
+    type    = "isolated"
   }
 }
 resource "aws_route_table_association" "isolated_rt_assoc" {
@@ -154,7 +158,11 @@ resource "aws_internet_gateway" "igw" {
 # Elastic IPs for NAT Gateway
 # -------------------------
 resource "aws_eip" "eip_nat" {
-  count  = length(var.availability_zones)
+    count = (
+      var.nat_mode == "ha" ? length(aws_subnet.public_subnet) :
+      var.nat_mode == "single" ? 1 :
+      0
+    )
 
   tags = {
     Name = "${var.project}-${var.environment}-eip-nat-${element(var.availability_zones, count.index)}"
@@ -168,7 +176,11 @@ resource "aws_eip" "eip_nat" {
 # NAT Gateway
 # -------------------------
 resource "aws_nat_gateway" "natgw" {
-  count         = length(var.availability_zones)
+  count = (
+      var.nat_mode == "ha" ? length(aws_subnet.public_subnet) :
+      var.nat_mode == "single" ? 1 :
+      0
+    )
   allocation_id = aws_eip.eip_nat[count.index].id
   subnet_id     = aws_subnet.public_subnet[count.index].id
 

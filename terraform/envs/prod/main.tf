@@ -61,29 +61,7 @@ module "ecs" {
   ecs_execution_role_arn = module.iam.ecs_execution_role_arn
   ecs_task_role_arn      = module.iam.ecs_task_role_arn
 
-  # Laravel 環境変数（tfvars から）
-  app_name  = var.app_name
-  app_env   = var.app_env
-  app_key   = var.app_key
-  app_debug = var.app_debug
-  app_url   = module.alb.alb_url # ALBの出力を利用
-
-  log_channel              = var.log_channel
-  log_deprecations_channel = var.log_deprecations_channel
-  log_level                = var.log_level
-
-  db_connection = var.db_connection
-  db_host       = var.db_host
-  db_port       = var.db_port
-  db_database   = var.db_database
-  db_username   = var.db_username
-  db_password   = var.db_password
-
-  filesystem_disk             = var.filesystem_disk
-  aws_default_region          = var.aws_default_region
-  aws_bucket                  = var.aws_bucket
-  aws_url                     = var.aws_url
-  aws_use_path_style_endpoint = var.aws_use_path_style_endpoint
+  ssm_dependency = module.ssm
 }
 
 
@@ -117,7 +95,7 @@ module "rds" {
   db_password = var.db_password
 
   instance_class = var.db_instance_class
-  multi_az       = true
+  multi_az       = false
 }
 
 
@@ -208,8 +186,8 @@ resource "aws_security_group" "rds_sg" {
 # ----------------------------
 module "iam" {
   source                    = "../../modules/iam"
-  project                   = "nagoyameshi"
-  environment               = "prod"
+  project                   = var.project
+  environment               = var.environment
   aws_account_id            = data.aws_caller_identity.current.account_id
   aws_region                = var.aws_region
   artifact_bucket           = module.s3.artifact_bucket
@@ -262,12 +240,24 @@ module "codebuild" {
   ecs_cluster_name          = module.ecs.ecs_cluster_name
   migration_task_definition = module.ecs.migration_task_definition_name
   subnet_id_1               = module.vpc.private_subnet_ids[0]
-  subnet_id_2               = module.vpc.private_subnet_ids[1]
+  subnet_id_2               = try(module.vpc.private_subnet_ids[1], module.vpc.private_subnet_ids[0])
   security_group_id         = aws_security_group.ecs_sg.id
   codebuild_role_arn        = module.iam.codebuild_role_arn
   public_subnet_id_1        = module.vpc.public_subnet_ids[0]
-  public_subnet_id_2        = module.vpc.public_subnet_ids[1]
+  public_subnet_id_2        = try(module.vpc.public_subnet_ids[1], module.vpc.public_subnet_ids[0])
 }
+
+# ----------------------------
+# SSM Module 呼び出し
+# ----------------------------
+module "ssm" {
+  source      = "../../modules/ssm"
+  project     = var.project
+  environment = var.environment
+  env         = var.env
+}
+
+
 
 # ----------------------------
 # S3 Module 呼び出し
@@ -291,71 +281,3 @@ module "ecr" {
 
 # AWS アカウント ID を取得
 data "aws_caller_identity" "current" {}
-
-# resource "aws_iam_role" "iam_role_codebuild" {
-#   name = "${var.project}-${var.environment}-iam-role-codebuild"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [{
-#       Effect = "Allow",
-#       Principal = {
-#         Service = "codebuild.amazonaws.com"
-#       },
-#       Action = "sts:AssumeRole"
-#     }]
-#   })
-# }
-# resource "aws_iam_role_policy_attachment" "codebuild_ecr_attach" {
-#   role       = aws_iam_role.iam_role_codebuild.name
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-# }
-# resource "aws_iam_role_policy_attachment" "codebuild_logs_attach" {
-#   role       = aws_iam_role.iam_role_codebuild.name
-#   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess"
-# }
-# resource "aws_iam_role_policy_attachment" "codebuild_s3_attach" {
-#   role       = aws_iam_role.iam_role_codebuild.name
-#   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
-# }
-
-
-# resource "aws_iam_role" "iam_role_codepipeline" {
-#   name = "${var.project}-${var.environment}-iam-role-codepipeline"
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [{
-#       Effect = "Allow",
-#       Principal = {
-#         Service = "codepipeline.amazonaws.com"
-#       },
-#       Action = "sts:AssumeRole"
-#     }]
-#   })
-# }
-# resource "aws_iam_policy" "iam_policy_codepipeline" {
-#   name = "${var.project}-${var.environment}-iam-policy-codepipeline"
-#   policy = jsonencode({
-#     Version = "2012-10-17",
-#     Statement = [
-#       {
-#         Effect = "Allow",
-#         Action = [
-#           "codebuild:BatchGetBuilds",
-#           "codebuild:StartBuild",
-#           "ecs:UpdateService",
-#           "iam:PassRole"
-#         ],
-#         Resource = "*"
-#       },
-#       {
-#         Effect   = "Allow",
-#         Action   = ["s3:GetObject"],
-#         Resource = "arn:aws:s3:::${var.s3_bucket_name}/*" #todo #s3未作成
-#       }
-#     ]
-#   })
-# }
-# resource "aws_iam_role_policy_attachment" "codepipeline_attach" {
-#   role       = aws_iam_role.iam_role_codepipeline.name
-#   policy_arn = aws_iam_policy.iam_policy_codepipeline.arn
-# }

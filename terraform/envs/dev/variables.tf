@@ -32,6 +32,10 @@ variable "aws_region" {
   type = string
 }
 
+variable "nat_mode" {
+
+}
+
 # ECS関連 -------------------------------------------------
 variable "ecs_cpu" {
   default = "256"
