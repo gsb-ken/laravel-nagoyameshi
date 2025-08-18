@@ -278,6 +278,48 @@ module "ecr" {
   environment = var.environment
 }
 
+# ----------------------------
+# Cloudwatch Module 呼び出し
+# ----------------------------
+module "cloudwatch" {
+  source = "../../modules/cloudwatch"
+
+  project     = var.project
+  environment = var.environment
+  region      = var.region
+
+  waf_web_acl_name           = var.waf_web_acl_name
+  waf_rule_name              = var.waf_rule_name
+  waf_scope                  = var.waf_scope
+  cloudfront_distribution_id = var.cloudfront_distribution_id
+
+  alb_arn_suffix = var.alb_arn_suffix
+  tg_arn_suffix  = var.tg_arn_suffix
+
+  ecs_cluster_name = var.ecs_cluster_name
+  ecs_service_name = var.ecs_service_name
+
+  rds_instance_id = var.rds_instance_id
+
+  alert_email = var.alert_email
+
+  threshold_waf_blocked_sum_1m         = var.threshold_waf_blocked_sum_1m
+  threshold_cf_requests_sum_5m         = var.threshold_cf_requests_sum_5m
+  threshold_cf_5xx_rate_avg_5m_percent = var.threshold_cf_5xx_rate_avg_5m_percent
+  threshold_alb_unhealthy_max_1m       = var.threshold_alb_unhealthy_max_1m
+  threshold_ecs_cpu_avg_5m_percent     = var.threshold_ecs_cpu_avg_5m_percent
+  threshold_ecs_mem_avg_5m_percent     = var.threshold_ecs_mem_avg_5m_percent
+  threshold_ecs_taskcount_min_1m       = var.threshold_ecs_taskcount_min_1m
+  threshold_rds_cpu_avg_5m_percent     = var.threshold_rds_cpu_avg_5m_percent
+  threshold_rds_free_storage_min_gb    = var.threshold_rds_free_storage_min_gb
+  threshold_rds_conns_max_1m           = var.threshold_rds_conns_max_1m
+  ecs_retention                        = var.ecs_retention
+  rds_retention                        = var.rds_retention
+  waf_retention                        = var.waf_retention
+
+}
+
+
 
 # AWS アカウント ID を取得
 data "aws_caller_identity" "current" {}

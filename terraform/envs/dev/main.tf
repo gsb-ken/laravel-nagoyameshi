@@ -278,6 +278,5 @@ module "ecr" {
   environment = var.environment
 }
 
-
 # AWS アカウント ID を取得
 data "aws_caller_identity" "current" {}
